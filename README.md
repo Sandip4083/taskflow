@@ -60,7 +60,3 @@ This Frontend connects strictly to the Mock API built using `msw`. All endpoints
 - `POST /projects/:id/tasks` - Creates tasks defaulted to `todo`.
 - `PATCH /tasks/:id` - Dynamically updates task fields (Used extensively for Drag-and-Drop and generic updates).
 - `DELETE /tasks/:id` - Deletes tasks successfully.
-
-## 7. What You'd Do With More Time
-- **Robust Form Validation**: Switch from manual state checks to `react-hook-form` and `zod` for strictly typing and asserting dynamic payload bodies prior to submitting requests or throwing validation errors.
-- **Advanced State Management**: Integrate `@tanstack/react-query` to handle request caching, intelligent invalidation, and deduplication for projects/tasks synchronization instead of standard explicit `useEffect` hooks.
