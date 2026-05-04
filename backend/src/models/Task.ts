@@ -57,6 +57,7 @@ taskSchema.set('toJSON', {
     ret.assignee_id = typeof ret.assignee === 'object' && ret.assignee?._id
       ? ret.assignee._id.toString()
       : ret.assignee?.toString() || null;
+    // Keep dueDate as-is (frontend reads task.dueDate)
     ret.due_date = ret.dueDate || null;
     ret.project_id = typeof ret.project === 'object' && ret.project?._id
       ? ret.project._id.toString()
@@ -66,7 +67,7 @@ taskSchema.set('toJSON', {
     delete ret._id;
     delete ret.__v;
     delete ret.assignee;
-    delete ret.dueDate;
+    // NOTE: keep ret.dueDate for frontend compatibility
     delete ret.project;
     delete ret.createdAt;
     delete ret.updatedAt;
