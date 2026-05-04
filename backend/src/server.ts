@@ -1,13 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
 
 import { env } from './config/env.js';
 import { connectDB } from './config/db.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import { setupSocket } from './socket/socketHandler.js';
-import { setSocketIO } from './services/notificationService.js';
 
 // Routes
 import authRoutes from './routes/authRoutes.js';
@@ -20,16 +17,7 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 const app = express();
 const httpServer = createServer(app);
 
-// Socket.IO
-const io = new Server(httpServer, {
-  cors: {
-    origin: env.CLIENT_URL,
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-    credentials: true,
-  },
-});
-setSocketIO(io);
-setupSocket(io);
+
 
 // Middleware
 app.use(cors({
@@ -67,7 +55,6 @@ const start = async () => {
   await connectDB();
   httpServer.listen(env.PORT, () => {
     console.log(`🚀 Server running on http://localhost:${env.PORT}`);
-    console.log(`📡 Socket.IO ready`);
   });
 };
 
