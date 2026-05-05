@@ -34,6 +34,20 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Connect DB for serverless environments
+let isDbConnected = false;
+app.use(async (req, res, next) => {
+  if (!isDbConnected) {
+    try {
+      await connectDB();
+      isDbConnected = true;
+    } catch (err) {
+      console.error('Failed to connect to DB in serverless function', err);
+    }
+  }
+  next();
+});
+
 // Health check (no auth required)
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -50,12 +64,15 @@ app.use('/api/analytics', analyticsRoutes);
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Start
-const start = async () => {
-  await connectDB();
-  httpServer.listen(env.PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${env.PORT}`);
-  });
-};
+// Start (Only run listen if not on Vercel)
+if (!process.env.VERCEL) {
+  const start = async () => {
+    await connectDB();
+    httpServer.listen(env.PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${env.PORT}`);
+    });
+  };
+  start();
+}
 
-start();
+export default app;
