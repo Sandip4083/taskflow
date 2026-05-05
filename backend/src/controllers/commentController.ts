@@ -40,7 +40,7 @@ export const addComment = asyncHandler(async (req: AuthRequest, res: Response) =
       type: 'comment_added',
       message: `New comment on "${task.title}": ${req.body.text.substring(0, 50)}`,
       userId: task.assignee.toString(),
-      relatedTask: taskId,
+      relatedTask: taskId as string,
       relatedProject: task.project.toString(),
     });
   }

@@ -51,7 +51,7 @@ taskSchema.index({ project: 1, status: 1 });
 taskSchema.index({ assignee: 1 });
 
 taskSchema.set('toJSON', {
-  transform(_doc, ret) {
+  transform(_doc, ret: any) {
     ret.id = ret._id.toString();
     // Frontend expects assignee_id as string, not populated object
     ret.assignee_id = typeof ret.assignee === 'object' && ret.assignee?._id
@@ -64,13 +64,13 @@ taskSchema.set('toJSON', {
       : ret.project?.toString();
     ret.created_at = ret.createdAt;
     ret.updated_at = ret.updatedAt;
-    delete ret._id;
-    delete ret.__v;
-    delete ret.assignee;
+    delete (ret as any)._id;
+    delete (ret as any).__v;
+    delete (ret as any).assignee;
     // NOTE: keep ret.dueDate for frontend compatibility
-    delete ret.project;
-    delete ret.createdAt;
-    delete ret.updatedAt;
+    delete (ret as any).project;
+    delete (ret as any).createdAt;
+    delete (ret as any).updatedAt;
     return ret;
   },
 });

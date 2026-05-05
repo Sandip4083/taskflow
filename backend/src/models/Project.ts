@@ -21,7 +21,7 @@ const projectSchema = new Schema<IProject>(
 );
 
 projectSchema.set('toJSON', {
-  transform(_doc, ret) {
+  transform(_doc, ret: any) {
     ret.id = ret._id.toString();
     // Frontend expects owner_id as string
     ret.owner_id = typeof ret.owner === 'object' && ret.owner?._id
@@ -29,10 +29,10 @@ projectSchema.set('toJSON', {
       : ret.owner?.toString();
     ret.created_at = ret.createdAt;
     ret.updated_at = ret.updatedAt;
-    delete ret._id;
-    delete ret.__v;
-    delete ret.createdAt;
-    delete ret.updatedAt;
+    delete (ret as any)._id;
+    delete (ret as any).__v;
+    delete (ret as any).createdAt;
+    delete (ret as any).updatedAt;
     return ret;
   },
 });

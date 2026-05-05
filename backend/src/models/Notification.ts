@@ -28,9 +28,9 @@ const notificationSchema = new Schema<INotification>(
 );
 
 notificationSchema.set('toJSON', {
-  transform(_doc, ret) {
+  transform(_doc, ret: any) {
     ret.id = ret._id;
-    delete ret.__v;
+    delete (ret as any).__v;
     return ret;
   },
 });

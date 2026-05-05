@@ -64,7 +64,7 @@ export const createTask = asyncHandler(async (req: AuthRequest, res: Response) =
       message: `You were assigned to "${title}" in ${project.name}`,
       userId: assignee_id,
       relatedTask: task._id.toString(),
-      relatedProject: projectId,
+      relatedProject: projectId as string,
     });
   }
 

@@ -19,10 +19,10 @@ const commentSchema = new Schema<IComment>(
 );
 
 commentSchema.set('toJSON', {
-  transform(_doc, ret) {
+  transform(_doc, ret: any) {
     ret.id = ret._id.toString();
-    delete ret._id;
-    delete ret.__v;
+    delete (ret as any)._id;
+    delete (ret as any).__v;
     return ret;
   },
 });
