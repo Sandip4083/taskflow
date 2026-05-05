@@ -18,7 +18,7 @@ interface TaskModalProps {
   onClose: () => void;
 }
 
-export const TaskModal = ({ task, projectId, onClose }: TaskModalProps) => {
+export const TaskModal = ({ task, projectId: _projectId, onClose }: TaskModalProps) => {
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState('');
 

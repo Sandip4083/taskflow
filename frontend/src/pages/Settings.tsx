@@ -1,11 +1,11 @@
-import React from 'react';
+
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Avatar } from '../components/ui/Avatar';
-import { Moon, Sun, Bell, Shield, Key } from 'lucide-react';
+import { Moon, Sun, Bell, Shield } from 'lucide-react';
 
 export const Settings = () => {
   const { user } = useAuth();

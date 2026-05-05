@@ -2,9 +2,8 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { API_URL } from '../config';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isToday, isSameDay } from 'date-fns';
-import { Badge } from '../components/ui/Badge';
+import { Card } from '../components/ui/Card';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isToday, isSameDay } from 'date-fns';
 import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 
 export const CalendarView = () => {
