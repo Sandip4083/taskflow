@@ -1,8 +1,19 @@
 {
   "installCommand": "npm install && cd backend && npm install && cd ../frontend && npm install",
   "buildCommand": "cd frontend && npm run build && cd .. && rm -rf public && cp -r frontend/dist public",
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
+    }
+  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/" },
-    { "source": "/((?!assets/).*)", "destination": "/index.html" }
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
   ]
 }
