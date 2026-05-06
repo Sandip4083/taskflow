@@ -15,31 +15,38 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      if (storedToken && storedUser) return storedToken;
+    } catch {
+      localStorage.clear();
+    }
+    return null;
+  });
+
   const [user, setUser] = useState<User | null>(() => {
     try {
       const storedToken = localStorage.getItem('token');
       const storedUser = localStorage.getItem('user');
-      if (storedToken && storedUser) {
-        return JSON.parse(storedUser);
-      }
+      if (storedToken && storedUser) return JSON.parse(storedUser);
     } catch {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.clear();
     }
     return null;
   });
-  
-  const [token, setToken] = useState<string | null>(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedToken && storedUser) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-      return storedToken;
-    }
-    return null;
-  });
-  
+
   const [loading] = useState(false);
+
+  // Sync axios headers with token
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common['Authorization'];
+    }
+  }, [token]);
 
   // Auto-logout on 401 (expired token)
   useEffect(() => {
