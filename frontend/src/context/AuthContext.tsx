@@ -15,20 +15,31 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const storedToken = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      if (storedToken && storedUser) {
+        return JSON.parse(storedUser);
+      }
+    } catch {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
+    return null;
+  });
+  
+  const [token, setToken] = useState<string | null>(() => {
     const storedToken = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
       axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      return storedToken;
     }
-    setLoading(false);
-  }, []);
+    return null;
+  });
+  
+  const [loading] = useState(false);
 
   // Auto-logout on 401 (expired token)
   useEffect(() => {
@@ -72,6 +83,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) throw new Error('useAuth must be used within an AuthProvider');
