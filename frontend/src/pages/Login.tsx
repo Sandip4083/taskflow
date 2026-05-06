@@ -25,7 +25,7 @@ export const Login = () => {
       login(res.data.token, res.data.user);
       navigate('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to login');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to login');
     } finally {
       setLoading(false);
     }

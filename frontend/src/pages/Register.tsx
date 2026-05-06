@@ -23,7 +23,7 @@ export const Register = () => {
       await axios.post(`${API_URL}/auth/register`, { name, email, password });
       navigate('/login');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }

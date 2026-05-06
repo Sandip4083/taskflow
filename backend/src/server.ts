@@ -17,35 +17,48 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 const app = express();
 const httpServer = createServer(app);
 
-
-
 // Middleware
+const allowedOrigins = [
+  env.CLIENT_URL,
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+];
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow any localhost origin in dev, or the configured CLIENT_URL
-    if (!origin || origin.startsWith('http://localhost') || origin === env.CLIENT_URL) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    // Allow requests with no origin (mobile apps, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    // Allow any localhost origin in dev
+    if (origin.startsWith('http://localhost')) return callback(null, true);
+    // Allow any Vercel deployment origin
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    // Allow configured CLIENT_URL
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Connect DB for serverless environments
-let isDbConnected = false;
-app.use(async (req, res, next) => {
-  if (!isDbConnected) {
-    try {
-      await connectDB();
-      isDbConnected = true;
-    } catch (err) {
-      console.error('Failed to connect to DB in serverless function', err);
-    }
+// Connect DB for serverless environments — lazy connection with caching
+let dbConnectionPromise: Promise<void> | null = null;
+
+app.use(async (_req, res, next) => {
+  if (!dbConnectionPromise) {
+    dbConnectionPromise = connectDB().catch((err) => {
+      dbConnectionPromise = null; // Reset so next request retries
+      throw err;
+    });
   }
-  next();
+  try {
+    await dbConnectionPromise;
+    next();
+  } catch (err) {
+    console.error('Failed to connect to DB in serverless function', err);
+    res.status(503).json({ error: 'Database connection failed. Please try again.' });
+  }
 });
 
 // Health check (no auth required)
