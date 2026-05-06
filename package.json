@@ -7,7 +7,7 @@
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "vercel-build": "npm run install:all && cd frontend && npm run build"
+    "vercel-build": "npm run install:all && cd frontend && npm run build && cd .. && node -e \"const fs = require('fs'); fs.rmSync('public', { recursive: true, force: true }); fs.renameSync('frontend/dist', 'public');\""
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
