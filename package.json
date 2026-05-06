@@ -7,8 +7,8 @@
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build && cd .. && shx rm -rf public && shx mkdir -p public && shx cp -rf frontend/dist/* public/",
-    "vercel-build": "cd backend && npm install && cd ../frontend && npm install && npm run build && cd .. && shx rm -rf public && shx mkdir -p public && shx cp -rf frontend/dist/* public/"
+    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build && cd .. && shx rm -rf build-output && shx mkdir -p build-output && shx cp -rf frontend/dist/* build-output/",
+    "vercel-build": "cd backend && npm install && cd ../frontend && npm install && npm run build && cd .. && shx rm -rf build-output && shx mkdir -p build-output && shx cp -rf frontend/dist/* build-output/"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

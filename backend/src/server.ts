@@ -63,7 +63,17 @@ app.use(async (_req, res, next) => {
 
 // Health check (no auth required)
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    env: {
+      has_mongo: !!env.MONGODB_URI,
+      has_jwt: !!env.JWT_SECRET,
+      client_url: env.CLIENT_URL,
+      node_env: process.env.NODE_ENV,
+      is_vercel: !!process.env.VERCEL
+    }
+  });
 });
 
 // API Routes
