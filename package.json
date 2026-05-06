@@ -7,8 +7,8 @@
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build && cd .. && rm -rf public && cp -r frontend/dist public",
-    "vercel-build": "cd backend && npm install && cd ../frontend && npm install && npm run build && cd .. && rm -rf public && cp -r frontend/dist public"
+    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build && cd .. && shx rm -rf public && shx cp -r frontend/dist public",
+    "vercel-build": "cd backend && npm install && cd ../frontend && npm install && npm run build && cd .. && shx rm -rf public && shx cp -r frontend/dist public"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -27,6 +27,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^24.0.1",
     "concurrently": "^9.1.2",
+    "shx": "^0.4.0",
     "typescript": "^5.8.3"
   }
 }
