@@ -28,12 +28,27 @@ export const Register = () => {
     try {
       await axios.post(`${API_URL}/auth/register`, { name, email, password });
       navigate('/login');
-    } catch (err: any) {
-      const errorData = err.response?.data;
-      const errorMessage = typeof errorData === 'object' 
-        ? (errorData.error || errorData.message || JSON.stringify(errorData))
-        : (errorData || err.message || 'Registration failed');
-      setError(String(errorMessage));
+    } catch (err: unknown) {
+      let errorMessage = 'Registration failed';
+      if (axios.isAxiosError(err)) {
+        const errorData = err.response?.data;
+        if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (errorData && typeof errorData === 'object') {
+          const msg = (errorData as Record<string, unknown>).message || (errorData as Record<string, unknown>).error;
+          if (typeof msg === 'string') {
+            errorMessage = msg;
+          } else if (Array.isArray((errorData as Record<string, unknown>).errors)) {
+            const errors = (errorData as Record<string, unknown>).errors as Record<string, unknown>[];
+            if (errors.length > 0) errorMessage = String(errors[0]?.msg || errors[0]?.message || JSON.stringify(errors[0]));
+          } else {
+            errorMessage = JSON.stringify(errorData);
+          }
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
