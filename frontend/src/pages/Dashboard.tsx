@@ -68,7 +68,7 @@ export const Dashboard = () => {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-        {statCards.map((stat, i) => (
+        {statCards.map((stat) => (
           <Card key={stat.title} className={`group hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 border-border/50 animate-fade-in-up overflow-hidden`}>
             <div className={`h-0.5 w-full ${stat.bg}`} />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2 pt-3 sm:pt-5 px-3 sm:px-6">
