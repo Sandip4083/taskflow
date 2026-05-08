@@ -48,12 +48,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [token]);
 
-  // Auto-logout on 401 (expired token)
+  // Auto-logout on 401 (expired token) — skip auth endpoints so login errors display properly
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       (response) => response,
       (error) => {
-        if (error.response?.status === 401) {
+        const requestUrl = error.config?.url || '';
+        const isAuthEndpoint = requestUrl.includes('/auth/login') || 
+                               requestUrl.includes('/auth/register') || 
+                               requestUrl.includes('/auth/refresh');
+        
+        if (error.response?.status === 401 && !isAuthEndpoint) {
           setToken(null);
           setUser(null);
           localStorage.removeItem('token');

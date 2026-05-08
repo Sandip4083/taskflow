@@ -7,19 +7,39 @@ interface AvatarProps extends React.HTMLAttributes<HTMLDivElement> {
   size?: 'sm' | 'md' | 'lg';
 }
 
+const gradients = [
+  'from-violet-500 to-purple-600',
+  'from-blue-500 to-cyan-500',
+  'from-emerald-500 to-teal-500',
+  'from-orange-500 to-amber-500',
+  'from-pink-500 to-rose-500',
+  'from-indigo-500 to-blue-500',
+];
+
+function getGradient(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return gradients[Math.abs(hash) % gradients.length];
+}
+
 export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
   ({ className, src, fallback, size = 'md', ...props }, ref) => {
     const sizes = {
-      sm: 'h-6 w-6 text-xs',
-      md: 'h-8 w-8 text-sm',
-      lg: 'h-10 w-10 text-base',
+      sm: 'h-7 w-7 text-[10px]',
+      md: 'h-9 w-9 text-sm',
+      lg: 'h-11 w-11 text-base',
     };
+
+    const gradient = getGradient(fallback);
 
     return (
       <div
         ref={ref}
         className={cn(
-          'relative flex shrink-0 overflow-hidden rounded-full bg-secondary text-secondary-foreground items-center justify-center font-medium border border-border',
+          'relative flex shrink-0 overflow-hidden rounded-full items-center justify-center font-semibold text-white ring-2 ring-background shadow-sm',
+          `bg-gradient-to-br ${gradient}`,
           sizes[size],
           className
         )}
@@ -35,7 +55,7 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
             }}
           />
         ) : null}
-        <span className="flex h-full w-full items-center justify-center">
+        <span className="flex h-full w-full items-center justify-center drop-shadow-sm">
           {fallback.substring(0, 2).toUpperCase()}
         </span>
       </div>

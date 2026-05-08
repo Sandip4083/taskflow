@@ -1,132 +1,117 @@
-# TaskFlow — Full-Stack Task Management Platform
+<p align="center">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React" />
+  <img src="https://img.shields.io/badge/Node.js-22-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/MongoDB-Atlas-47A248?style=for-the-badge&logo=mongodb&logoColor=white" alt="MongoDB" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Deployed_on-Vercel-000?style=for-the-badge&logo=vercel&logoColor=white" alt="Vercel" />
+</p>
 
-A production-grade task management application built with **React**, **Node.js**, **Express**, and **MongoDB Atlas**. Features real-time collaboration via **Socket.IO**, JWT authentication, drag-and-drop Kanban boards, analytics dashboard, and a polished dark/light theme UI.
+# ⚡ TaskFlow — Premium Project Management
 
----
+> A production-grade, full-stack Kanban task management platform for modern teams.  
+> Organize projects, drag-and-drop tasks, track analytics, and collaborate — all in real-time.
 
-## 1. Overview
-
-TaskFlow enables teams to organize projects, manage tasks across Kanban boards, and collaborate in real-time. Originally a frontend-only prototype using MSW (Mock Service Worker), it has been transformed into a complete full-stack application with persistent data, secure authentication, and real-time updates.
-
-### Key Features
-- **JWT Authentication** — Secure login/signup with access + refresh tokens and bcrypt password hashing.
-- **Role-Based Access** — Admin and Member roles with protected routes and middleware.
-- **Project Management** — Full CRUD with member management and ownership controls.
-- **Kanban Task Board** — Drag-and-drop tasks across Todo, In Progress, and Done columns.
-- **Task Features** — Priority levels, due dates, assignees, activity logs, and comments.
-- **Real-Time Updates** — Socket.IO for live task and notification syncing across clients.
-- **Analytics Dashboard** — Task stats, project progress, priority breakdown, and productivity tracking.
-- **Notification System** — In-app notifications for task assignments, comments, and project invites.
-- **Dark Mode** — Persistent dark/light theme toggle with system preference detection.
-- **Responsive Design** — Mobile-friendly layouts from 375px to 1280px+.
+🔗 **Live Demo:** [https://sandip4083.github.io/taskflow/](https://sandip4083.github.io/taskflow/)
 
 ---
 
-## 2. Tech Stack
+## ✨ Features
+
+| Feature | Description |
+|---------|-------------|
+| 🔐 **JWT Authentication** | Secure login/signup with access + refresh tokens and bcrypt hashing |
+| 📋 **Kanban Board** | Drag-and-drop tasks across Todo, In Progress, and Done columns |
+| 📊 **Analytics Dashboard** | Task stats, project progress charts, priority breakdown |
+| 📅 **Calendar View** | Visual calendar with color-coded task deadlines |
+| 🔔 **Notifications** | In-app notifications for assignments, comments, and invites |
+| 🌙 **Dark/Light/System Theme** | Persistent theme toggle with OS preference detection |
+| 📱 **Fully Responsive** | Optimized for mobile (375px), tablet (768px), and desktop (1440px+) |
+| 💬 **Task Comments** | Threaded discussions on each task with real-time updates |
+| 🎯 **Priority & Due Dates** | High/Medium/Low priority badges, due date tracking, overdue alerts |
+| 🔄 **Real-Time Updates** | Socket.IO for live task syncing across team members |
+| 📈 **Progress Tracking** | Per-project completion percentage with visual progress bars |
+| 🔑 **Password Strength Meter** | Real-time password strength feedback during registration |
+
+---
+
+## 🛠️ Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 19, TypeScript, Vite, TailwindCSS v3, React Router v7 |
+| **Frontend** | React 19, TypeScript, Vite 8, TailwindCSS v3, React Router v7 |
 | **Backend** | Node.js, Express 5, TypeScript, Socket.IO |
 | **Database** | MongoDB Atlas (Mongoose ODM) |
 | **Auth** | JWT (access + refresh tokens), bcryptjs |
-| **Validation** | express-validator |
-| **Styling** | TailwindCSS, clsx, tailwind-merge |
+| **Charts** | Recharts (Pie, Bar charts) |
+| **Drag & Drop** | @hello-pangea/dnd |
+| **State** | TanStack React Query v5, React Context |
+| **Styling** | TailwindCSS, clsx, tailwind-merge, Inter (Google Fonts) |
 | **Icons** | Lucide React |
+| **Deployment** | Vercel (Serverless API + Static SPA) |
 | **Containerization** | Docker (multi-stage build with NGINX) |
 
 ---
 
-## 3. Project Structure
+## 📐 Architecture
 
 ```
 taskflow/
-├── frontend/                    # React + Vite + TypeScript
+├── api/                          # Vercel serverless entry point
+│   └── index.ts                  # Re-exports Express app
+│
+├── frontend/                     # React + Vite + TypeScript
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── layout/Navbar.tsx
-│   │   │   └── ui/             # Button, Card, Input (ShadcnUI-inspired)
+│   │   │   ├── layout/           # Navbar, Sidebar (responsive)
+│   │   │   ├── ui/               # Button, Card, Input, Badge, Avatar
+│   │   │   ├── TaskModal.tsx     # Full task detail modal
+│   │   │   └── ErrorBoundary.tsx # Graceful crash recovery
 │   │   ├── context/
-│   │   │   ├── AuthContext.tsx  # JWT auth state + axios interceptors
-│   │   │   └── ThemeContext.tsx # Dark/light mode persistence
+│   │   │   ├── AuthContext.tsx    # JWT auth + axios interceptors
+│   │   │   └── ThemeContext.tsx   # Dark/Light/System persistence
 │   │   ├── pages/
-│   │   │   ├── Login.tsx
-│   │   │   ├── Register.tsx
-│   │   │   ├── ProjectList.tsx
-│   │   │   └── ProjectDetail.tsx  # Kanban board + drag-and-drop
-│   │   ├── lib/utils.ts        # cn() utility (clsx + tailwind-merge)
-│   │   ├── config.ts           # API_URL from environment
-│   │   ├── main.tsx
-│   │   └── index.css           # Tailwind + CSS custom properties
-│   ├── .env                    # VITE_API_BASE_URL
-│   ├── package.json
-│   └── vite.config.ts
+│   │   │   ├── Login.tsx         # Premium login with feature showcase
+│   │   │   ├── Register.tsx      # Registration with password strength
+│   │   │   ├── ProjectList.tsx   # Project grid with search
+│   │   │   ├── ProjectDetail.tsx # Kanban board + drag-and-drop
+│   │   │   ├── Dashboard.tsx     # Analytics with Recharts
+│   │   │   ├── CalendarView.tsx  # Monthly calendar with tasks
+│   │   │   └── Settings.tsx      # Profile, theme, notifications
+│   │   └── config.ts            # API URL configuration
+│   ├── index.html               # SEO-optimized with meta tags
+│   └── tailwind.config.js       # Custom design tokens
 │
-├── backend/                     # Node.js + Express + MongoDB
+├── backend/                      # Node.js + Express + MongoDB
 │   ├── src/
-│   │   ├── config/
-│   │   │   ├── db.ts           # MongoDB Atlas connection
-│   │   │   └── env.ts          # Environment config
-│   │   ├── models/
-│   │   │   ├── User.ts         # bcrypt hashing, role system
-│   │   │   ├── Project.ts      # Owner + members
-│   │   │   ├── Task.ts         # Status, priority, activity log
-│   │   │   ├── Comment.ts      # Task comments
-│   │   │   └── Notification.ts # In-app notifications
-│   │   ├── controllers/
-│   │   │   ├── authController.ts
-│   │   │   ├── projectController.ts
-│   │   │   ├── taskController.ts
-│   │   │   ├── commentController.ts
-│   │   │   ├── userController.ts
-│   │   │   └── analyticsController.ts
-│   │   ├── routes/
-│   │   │   ├── authRoutes.ts
-│   │   │   ├── projectRoutes.ts
-│   │   │   ├── taskRoutes.ts
-│   │   │   ├── commentRoutes.ts
-│   │   │   ├── userRoutes.ts
-│   │   │   └── analyticsRoutes.ts
-│   │   ├── middleware/
-│   │   │   ├── auth.ts         # JWT verification
-│   │   │   ├── role.ts         # Role-based access control
-│   │   │   ├── errorHandler.ts # Global error handling
-│   │   │   └── validate.ts     # Request validation
-│   │   ├── services/
-│   │   │   ├── authService.ts  # Token generation/verification
-│   │   │   └── notificationService.ts
-│   │   ├── socket/
-│   │   │   └── socketHandler.ts # Real-time event handling
-│   │   ├── utils/
-│   │   │   ├── ApiError.ts     # Custom error class
-│   │   │   └── asyncHandler.ts # Async route wrapper
-│   │   └── server.ts           # Express + Socket.IO entry point
-│   ├── .env                    # MongoDB URI, JWT secrets
-│   └── package.json
+│   │   ├── config/              # DB connection, environment
+│   │   ├── models/              # User, Project, Task, Comment, Notification
+│   │   ├── controllers/         # Auth, Project, Task, Analytics, Comments
+│   │   ├── routes/              # REST API route definitions
+│   │   ├── middleware/          # Auth, roles, validation, error handling
+│   │   ├── services/           # Auth tokens, notifications
+│   │   ├── socket/             # Socket.IO real-time handlers
+│   │   └── server.ts           # Express + Socket.IO entry
+│   └── .env                    # Environment variables
 │
-├── docker-compose.yml
-└── README.md
+├── vercel.json                  # Vercel deployment config
+└── docker-compose.yml           # Docker containerization
 ```
 
----
-
-## 4. Architecture Decisions
-
-- **Clean Architecture** — Controllers handle HTTP, services handle business logic, models define data shape. Middleware handles cross-cutting concerns (auth, validation, errors).
-- **Micro-Component UI** — Reusable atomic UI elements (`Button`, `Input`, `Card`) built with `tailwind-merge` and `clsx` for flexible className composition, inspired by ShadcnUI.
-- **Context API for Auth** — React Context with localStorage persistence, axios interceptors for automatic token management.
-- **Optimistic Updates** — Task deletion and status changes update UI instantly, reverting on backend failure.
-- **Activity Logging** — Every task change (status, assignee, priority) is automatically logged with timestamp and user reference.
-- **Real-Time via Socket.IO** — JWT-authenticated socket connections, project-scoped rooms for targeted broadcasts.
+### Design Principles
+- **Clean Architecture** — Controllers → Services → Models separation
+- **Optimistic Updates** — UI updates instantly, reverts on API failure
+- **Glassmorphism UI** — Backdrop blur, gradient accents, smooth shadows
+- **Staggered Animations** — Entrance animations with progressive delays
+- **Mobile-First Responsive** — Every component adapts from 375px to 1440px+
 
 ---
 
-## 5. Running Locally
+## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js v18+ (v22 tested)
-- MongoDB Atlas account (or local MongoDB)
-- npm
+- **Node.js** v18+ (v22 recommended)
+- **MongoDB Atlas** account (or local MongoDB)
+- **npm** package manager
 
 ### Quick Start
 
@@ -135,34 +120,21 @@ taskflow/
 git clone https://github.com/Sandip4083/taskflow.git
 cd taskflow
 
-# Install backend dependencies
-cd backend
+# Install all dependencies
 npm install
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
 
-# Configure environment (edit .env with your MongoDB URI)
-# Default .env is pre-configured
-
-# Start backend (port 4000)
+# Start both servers (backend + frontend)
 npm run dev
 
-# In a new terminal — Install & start frontend
-cd ../frontend
-npm install
-npm run dev
-
-# App is available at http://localhost:5173 (or next available port)
-```
-
-### Docker (Production Build)
-
-```bash
-docker compose up -d --build
-# Frontend: http://localhost:3000
+# App: http://localhost:5173
+# API: http://localhost:4000
 ```
 
 ### Environment Variables
 
-**Backend (`backend/.env`)**
+**Backend** (`backend/.env`)
 ```env
 PORT=4000
 MONGODB_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/taskflow
@@ -173,27 +145,55 @@ JWT_REFRESH_EXPIRES_IN=7d
 CLIENT_URL=http://localhost:5173
 ```
 
-**Frontend (`frontend/.env`)**
+**Frontend** (`frontend/.env`)
 ```env
 VITE_API_BASE_URL=http://localhost:4000/api
 ```
 
+### Docker (Production)
+
+```bash
+docker compose up -d --build
+# Frontend: http://localhost:3000
+```
+
 ---
 
-## 6. API Reference
+## ☁️ Vercel Deployment
+
+The app is pre-configured for Vercel with `vercel.json`:
+
+1. **Import** the repository in [Vercel Dashboard](https://vercel.com)
+2. **Add Environment Variables** in Project Settings:
+   - `MONGODB_URI`
+   - `JWT_SECRET`
+   - `JWT_REFRESH_SECRET`
+   - `CLIENT_URL` (your Vercel deployment URL)
+3. **Whitelist Vercel IPs** in MongoDB Atlas → Network Access → Allow `0.0.0.0/0`
+4. **Deploy** — API routes to serverless, frontend to static CDN
+
+---
+
+## 📡 API Reference
 
 All endpoints are prefixed with `/api`. Protected routes require `Authorization: Bearer <token>` header.
 
-### Authentication
+<details>
+<summary><b>🔐 Authentication</b></summary>
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `POST` | `/api/auth/register` | Create account | ✗ |
 | `POST` | `/api/auth/login` | Login, get tokens | ✗ |
 | `POST` | `/api/auth/refresh` | Refresh access token | ✗ |
 | `POST` | `/api/auth/logout` | Invalidate refresh token | ✓ |
-| `GET` | `/api/auth/me` | Get current user | ✓ |
+| `GET`  | `/api/auth/me` | Get current user | ✓ |
 
-### Projects
+</details>
+
+<details>
+<summary><b>📁 Projects</b></summary>
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/projects` | List user's projects | ✓ |
@@ -204,70 +204,92 @@ All endpoints are prefixed with `/api`. Protected routes require `Authorization:
 | `POST` | `/api/projects/:id/members` | Add member | ✓ (owner) |
 | `DELETE` | `/api/projects/:id/members/:userId` | Remove member | ✓ (owner) |
 
-### Tasks
+</details>
+
+<details>
+<summary><b>✅ Tasks</b></summary>
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| `GET` | `/api/projects/:id/tasks` | List tasks (filter: status, priority, assignee, search) | ✓ |
+| `GET` | `/api/projects/:id/tasks` | List tasks (filter: status, priority, assignee) | ✓ |
 | `POST` | `/api/projects/:id/tasks` | Create task | ✓ |
 | `GET` | `/api/tasks/:id` | Get task detail | ✓ |
-| `PATCH` | `/api/tasks/:id` | Update task (status, priority, assignee, etc.) | ✓ |
+| `PATCH` | `/api/tasks/:id` | Update task | ✓ |
 | `DELETE` | `/api/tasks/:id` | Delete task | ✓ |
 
-### Comments
+</details>
+
+<details>
+<summary><b>💬 Comments</b></summary>
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/tasks/:taskId/comments` | List comments | ✓ |
 | `POST` | `/api/tasks/:taskId/comments` | Add comment | ✓ |
 | `DELETE` | `/api/comments/:commentId` | Delete comment | ✓ (author/admin) |
 
-### Users & Notifications
+</details>
+
+<details>
+<summary><b>📊 Analytics & More</b></summary>
+
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
+| `GET` | `/api/analytics/overview` | Task stats, project progress | ✓ |
+| `GET` | `/api/analytics/productivity` | Weekly completion metrics | ✓ |
 | `GET` | `/api/users` | List all users | ✓ |
 | `GET` | `/api/notifications` | Get notifications | ✓ |
 | `PATCH` | `/api/notifications/:id/read` | Mark as read | ✓ |
-| `PATCH` | `/api/notifications/read-all` | Mark all as read | ✓ |
-
-### Analytics
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| `GET` | `/api/analytics/overview` | Task stats, project progress, recent activity | ✓ |
-| `GET` | `/api/analytics/productivity` | Weekly completion metrics | ✓ |
-
-### Health Check
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
 | `GET` | `/api/health` | Server status | ✗ |
+
+</details>
 
 ---
 
-## 7. Real-Time Events (Socket.IO)
+## 🔌 Real-Time Events (Socket.IO)
 
-Connections are authenticated via JWT token in handshake.
+Connections authenticated via JWT in handshake.
 
 | Event | Direction | Description |
 |-------|-----------|-------------|
 | `project:join` | Client → Server | Join project room |
-| `project:leave` | Client → Server | Leave project room |
 | `task:create` | Client → Server | Broadcast new task |
 | `task:update` | Client → Server | Broadcast task change |
 | `task:delete` | Client → Server | Broadcast task deletion |
 | `task:created` | Server → Client | Receive new task |
 | `task:updated` | Server → Client | Receive task change |
 | `task:deleted` | Server → Client | Receive task deletion |
-| `notification:new` | Server → Client | Receive new notification |
+| `notification:new` | Server → Client | Receive notification |
 
 ---
 
-## 8. Test Credentials
+## 📱 Responsive Breakpoints
 
-```
-Email:    test@example.com
-Password: password123
-```
+| Device | Width | Adaptations |
+|--------|-------|-------------|
+| **Mobile** | 375px | Single column, compact cards, bottom-sheet modal, abbreviated calendar |
+| **Tablet** | 768px | 2-column grids, expanded nav, medium charts |
+| **Laptop** | 1024px | 3-column kanban, full sidebar, full charts |
+| **Desktop** | 1440px+ | Max-width containers, feature showcase on auth pages |
 
 ---
 
-## 9. License
+## 🎨 Design System
 
-MIT
+- **Font:** Inter (Google Fonts)
+- **Colors:** HSL-based CSS custom properties with dark mode variants
+- **Animations:** Fade, slide, scale, float, shimmer, gradient-shift
+- **Components:** Glassmorphism cards, gradient avatars, colored shadows
+- **Accents:** Purple-to-blue gradient theme with emerald/amber status colors
+
+---
+
+## 📝 License
+
+MIT — free for personal and commercial use.
+
+---
+
+<p align="center">
+  Built with ❤️ by <a href="https://github.com/Sandip4083">Sandip</a>
+</p>

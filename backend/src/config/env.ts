@@ -1,9 +1,12 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Only load .env file in non-Vercel environments
 // On Vercel, env vars are injected by the platform
 if (!process.env.VERCEL) {
-  dotenv.config();
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 }
 
 export const env = {

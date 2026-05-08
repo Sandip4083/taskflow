@@ -41,6 +41,27 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+      },
+      borderRadius: {
+        lg: "var(--radius)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+      },
+      boxShadow: {
+        'glow': '0 0 20px -5px hsl(var(--primary) / 0.3)',
+        'glow-lg': '0 0 40px -10px hsl(var(--primary) / 0.3)',
+        'inner-glow': 'inset 0 1px 0 0 hsl(var(--primary-foreground) / 0.05)',
       },
     },
   },
