@@ -84,9 +84,36 @@ export const ProjectList = () => {
 
   if (isLoading) {
     return (
-      <div className="p-6 sm:p-8 flex flex-col items-center justify-center h-full gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground text-sm">Loading your projects...</p>
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-6xl">
+        <div className="flex flex-col gap-4 mb-6 sm:mb-8 animate-fade-in-down">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-primary/20 to-purple-500/20 rounded-lg sm:rounded-xl flex items-center justify-center border border-primary/20 shrink-0">
+                <FolderKanban className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              </div>
+              Projects
+            </h1>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {[1,2,3,4,5,6].map(i => (
+            <div key={i} className="rounded-xl border bg-card p-0 overflow-hidden animate-pulse" style={{ animationDelay: `${i * 100}ms` }}>
+              <div className="h-1 w-full skeleton" />
+              <div className="p-4 sm:p-6 space-y-3">
+                <div className="h-5 w-3/4 skeleton" />
+                <div className="h-3 w-full skeleton" />
+                <div className="h-3 w-1/2 skeleton" />
+                <div className="flex gap-2 mt-4">
+                  <div className="h-5 w-16 skeleton rounded-full" />
+                </div>
+              </div>
+              <div className="border-t border-border/30 p-3 sm:p-4 flex justify-between items-center">
+                <div className="h-3 w-24 skeleton" />
+                <div className="h-6 w-6 skeleton rounded-md" />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -176,7 +203,7 @@ export const ProjectList = () => {
         <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {filteredProjects.map((project, idx) => (
             <Link key={project.id} to={`/projects/${project.id}`}>
-              <Card className={`h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col group bg-gradient-to-br ${projectColors[idx % projectColors.length]} animate-fade-in-up`}>
+              <Card className={`h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-300 flex flex-col group bg-gradient-to-br ${projectColors[idx % projectColors.length]} animate-fade-in-up`} style={{ animationDelay: `${idx * 75}ms` }}>
                 <CardHeader className="pb-2 sm:pb-3 px-4 sm:px-6 pt-4 sm:pt-6">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="line-clamp-1 text-base sm:text-lg">{project.name}</CardTitle>

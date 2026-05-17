@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import { createServer } from 'http';
 
 import { env } from './config/env.js';
 import { connectDB } from './config/db.js';
@@ -13,9 +12,9 @@ import taskRoutes from './routes/taskRoutes.js';
 import commentRoutes from './routes/commentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import subtaskRoutes from './routes/subtaskRoutes.js';
 
 const app = express();
-const httpServer = createServer(app);
 
 // Middleware
 const allowedOrigins = [
@@ -39,8 +38,10 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+
+// Vercel has a 4.5MB body limit; keep Express below that
+app.use(express.json({ limit: '4mb' }));
+app.use(express.urlencoded({ extended: true, limit: '4mb' }));
 
 // Connect DB for serverless environments — lazy connection with caching
 let dbConnectionPromise: Promise<void> | null = null;
@@ -83,15 +84,16 @@ app.use('/api', taskRoutes);
 app.use('/api', commentRoutes);
 app.use('/api', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api', subtaskRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Start (Only run listen if not on Vercel)
+// Start (Only run listen if not on Vercel — serverless doesn't need http.createServer)
 if (!process.env.VERCEL) {
   const start = async () => {
     await connectDB();
-    httpServer.listen(env.PORT, () => {
+    app.listen(env.PORT, () => {
       console.log(`🚀 Server running on http://localhost:${env.PORT}`);
     });
   };

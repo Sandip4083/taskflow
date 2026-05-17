@@ -10,6 +10,7 @@ import { queryClient } from './lib/react-query';
 
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
+import { CommandPalette } from './components/CommandPalette';
 
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
@@ -38,6 +39,7 @@ const AppContent = () => {
             path="/*" 
             element={
               <ProtectedRoute>
+                <CommandPalette />
                 <Sidebar />
                 <main className="flex-1 overflow-y-auto bg-muted/20">
                   <Routes>

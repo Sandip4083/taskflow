@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, FolderKanban, Calendar, Settings, LogOut, Menu, X, Zap } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import axios from 'axios';
+import { API_URL } from '../../config';
 import { Avatar } from '../ui/Avatar';
 import { cn } from '../../lib/utils';
 
@@ -9,11 +12,37 @@ export const Sidebar = () => {
   const { user, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Fetch project count & task stats for badges
+  const { data: projects } = useQuery({
+    queryKey: ['projects'],
+    queryFn: async () => {
+      const res = await axios.get(`${API_URL}/projects`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data.projects;
+    },
+    enabled: !!user,
+  });
+
+  const { data: analyticsData } = useQuery({
+    queryKey: ['analytics-overview'],
+    queryFn: async () => {
+      const res = await axios.get(`${API_URL}/analytics/overview`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data;
+    },
+    enabled: !!user,
+  });
+
+  const projectCount = Array.isArray(projects) ? projects.length : 0;
+  const overdueCount = analyticsData?.stats?.overdue || 0;
+
   const navItems = [
-    { to: '/', icon: FolderKanban, label: 'Projects', description: 'Manage workspaces' },
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', description: 'Analytics & stats' },
-    { to: '/calendar', icon: Calendar, label: 'Calendar', description: 'Upcoming deadlines' },
-    { to: '/settings', icon: Settings, label: 'Settings', description: 'Preferences' },
+    { to: '/', icon: FolderKanban, label: 'Projects', description: 'Manage workspaces', badge: projectCount > 0 ? projectCount : null, badgeColor: 'bg-primary/10 text-primary' },
+    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', description: 'Analytics & stats', badge: null, badgeColor: '' },
+    { to: '/calendar', icon: Calendar, label: 'Calendar', description: 'Upcoming deadlines', badge: overdueCount > 0 ? overdueCount : null, badgeColor: 'bg-red-500/10 text-red-500' },
+    { to: '/settings', icon: Settings, label: 'Settings', description: 'Preferences', badge: null, badgeColor: '' },
   ];
 
   return (
@@ -96,10 +125,19 @@ export const Sidebar = () => {
               )}>
                 <item.icon className="w-[16px] h-[16px] sm:w-[18px] sm:h-[18px] shrink-0" />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <span className="block text-sm">{item.label}</span>
                 <span className="text-[10px] text-muted-foreground/70 font-normal hidden sm:block">{item.description}</span>
               </div>
+              {/* Badge */}
+              {item.badge !== null && (
+                <span className={cn(
+                  'text-[10px] sm:text-xs font-bold px-1.5 sm:px-2 py-0.5 rounded-full shrink-0',
+                  item.badgeColor
+                )}>
+                  {item.badge}
+                </span>
+              )}
             </NavLink>
           ))}
         </div>

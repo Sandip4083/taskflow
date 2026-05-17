@@ -1,21 +1,96 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useMutation } from '@tanstack/react-query';
+import axios from 'axios';
+import { API_URL } from '../config';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Avatar } from '../components/ui/Avatar';
 import { Badge } from '../components/ui/Badge';
-import { Moon, Sun, Bell, Shield, Settings as SettingsIcon, Palette, Monitor } from 'lucide-react';
+import { Moon, Sun, Bell, Shield, Settings as SettingsIcon, Palette, Monitor, Loader2, CheckCircle2, Camera, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 export const Settings = () => {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const { theme, setTheme } = useTheme();
   const [name, setName] = useState(user?.name || '');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (newName: string) => {
+      const res = await axios.patch(`${API_URL}/users/profile`, { name: newName }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      login(data.token, data.user);
+      toast.success('Profile updated successfully!');
+    },
+    onError: () => {
+      toast.error('Failed to update profile');
+    },
+  });
+
+  const uploadAvatarMutation = useMutation({
+    mutationFn: async (avatarData: string) => {
+      const res = await axios.patch(`${API_URL}/users/avatar`, { avatar: avatarData }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      login(data.token, data.user);
+      setAvatarPreview(null);
+      toast.success('Profile picture updated!');
+    },
+    onError: () => {
+      toast.error('Failed to upload picture. Try a smaller image.');
+    },
+  });
 
   const handleSave = () => {
-    toast.success('Settings saved! (Profile update coming soon)');
+    if (!name.trim()) {
+      toast.error('Name cannot be empty');
+      return;
+    }
+    if (name.trim() === user?.name) {
+      toast.info('No changes to save');
+      return;
+    }
+    updateProfileMutation.mutate(name.trim());
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setAvatarPreview(dataUrl);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadAvatar = () => {
+    if (!avatarPreview) return;
+    uploadAvatarMutation.mutate(avatarPreview);
   };
 
   const themeOptions = [
@@ -23,6 +98,8 @@ export const Settings = () => {
     { value: 'dark' as const, icon: Moon, label: 'Dark', desc: 'Easy on eyes' },
     { value: 'system' as const, icon: Monitor, label: 'System', desc: 'Match OS' },
   ];
+
+  const currentAvatar = avatarPreview || user?.avatar;
 
   return (
     <div className="p-3 sm:p-6 lg:p-8 max-w-4xl mx-auto space-y-5 sm:space-y-8">
@@ -37,13 +114,73 @@ export const Settings = () => {
       </div>
 
       <div className="flex flex-col md:grid md:grid-cols-3 gap-4 sm:gap-6">
-        {/* Profile card — full width on mobile, stacks on top */}
+        {/* Profile card with avatar upload */}
         <div className="md:col-span-1">
           <Card className="border-border/50 shadow-sm overflow-hidden animate-fade-in-up">
             <div className="h-16 sm:h-20 bg-gradient-to-br from-primary/20 via-purple-500/20 to-blue-500/20" />
             <CardContent className="pt-0 flex flex-col items-center text-center -mt-6 sm:-mt-8 pb-4 sm:pb-6">
-              <Avatar fallback={user?.name || 'User'} size="lg" className="w-12 h-12 sm:w-16 sm:h-16 text-lg sm:text-xl ring-4 ring-card shadow-lg" />
-              <div className="mt-3 sm:mt-4">
+              {/* Avatar with upload overlay */}
+              <div className="relative group">
+                {currentAvatar ? (
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full ring-4 ring-card shadow-lg overflow-hidden">
+                    <img src={currentAvatar} alt={user?.name} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <Avatar fallback={user?.name || 'User'} size="lg" className="w-16 h-16 sm:w-20 sm:h-20 text-xl sm:text-2xl ring-4 ring-card shadow-lg" />
+                )}
+                {/* Camera overlay on hover */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer"
+                >
+                  <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
+              </div>
+
+              {/* Upload controls when preview exists */}
+              {avatarPreview && (
+                <div className="mt-3 flex items-center gap-2 animate-fade-in">
+                  <Button 
+                    size="sm" 
+                    onClick={handleUploadAvatar} 
+                    disabled={uploadAvatarMutation.isPending}
+                    className="text-xs"
+                  >
+                    {uploadAvatarMutation.isPending ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Upload className="w-3 h-3" />
+                    )}
+                    Save Photo
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={() => { setAvatarPreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                    className="text-xs"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+
+              {!avatarPreview && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-2 text-[10px] text-primary hover:underline font-medium flex items-center gap-1 cursor-pointer"
+                >
+                  <Camera className="w-3 h-3" /> Change photo
+                </button>
+              )}
+
+              <div className="mt-2 sm:mt-3">
                 <h3 className="font-bold text-base sm:text-lg">{user?.name}</h3>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 break-all">{user?.email}</p>
               </div>
@@ -72,7 +209,18 @@ export const Settings = () => {
                 <Input defaultValue={user?.email} disabled className="max-w-full sm:max-w-md bg-muted/50 cursor-not-allowed" />
                 <p className="text-[10px] sm:text-xs text-muted-foreground">Email cannot be changed.</p>
               </div>
-              <Button className="mt-2 w-full sm:w-auto" onClick={handleSave}>Save Changes</Button>
+              <Button 
+                className="mt-2 w-full sm:w-auto" 
+                onClick={handleSave} 
+                disabled={updateProfileMutation.isPending || name.trim() === user?.name}
+              >
+                {updateProfileMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : updateProfileMutation.isSuccess && name.trim() === user?.name ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : null}
+                {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
             </CardContent>
           </Card>
 

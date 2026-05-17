@@ -7,8 +7,13 @@
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "declaration": false,
+    "sourceMap": true,
+    "allowImportingTsExtensions": false
   },
   "include": ["api/**/*", "backend/src/**/*"],
-  "exclude": ["node_modules", "frontend", "public", "dist"]
+  "exclude": ["node_modules", "frontend", "public", "dist", "build-output"]
 }

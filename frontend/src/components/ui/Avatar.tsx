@@ -26,6 +26,7 @@ function getGradient(name: string): string {
 
 export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
   ({ className, src, fallback, size = 'md', ...props }, ref) => {
+    const [imgFailed, setImgFailed] = React.useState(false);
     const sizes = {
       sm: 'h-7 w-7 text-[10px]',
       md: 'h-9 w-9 text-sm',
@@ -33,6 +34,7 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
     };
 
     const gradient = getGradient(fallback);
+    const showImage = src && !imgFailed;
 
     return (
       <div
@@ -45,14 +47,12 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
         )}
         {...props}
       >
-        {src ? (
+        {showImage ? (
           <img
             src={src}
             alt={fallback}
-            className="aspect-square h-full w-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLElement).style.display = 'none';
-            }}
+            className="aspect-square h-full w-full object-cover absolute inset-0 z-10"
+            onError={() => setImgFailed(true)}
           />
         ) : null}
         <span className="flex h-full w-full items-center justify-center drop-shadow-sm">

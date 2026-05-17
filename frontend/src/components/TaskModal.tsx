@@ -6,22 +6,36 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import { Avatar } from './ui/Avatar';
-import { X, Calendar, Clock, User, MessageSquare, Send, Loader2, Activity } from 'lucide-react';
+import { X, Calendar, Clock, User, MessageSquare, Send, Loader2, Activity, CheckSquare, Square, Plus, Trash2, ListChecks } from 'lucide-react';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, isPast, isToday, isTomorrow } from 'date-fns';
+import { cn } from '../lib/utils';
 
 type Comment = { id: string; text: string; author: { _id: string, name: string }; createdAt: string; };
+type Subtask = { id: string; title: string; completed: boolean; };
+
+type TaskData = {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  assignee?: { _id: string; name: string; avatar?: string };
+  dueDate?: string;
+};
 
 interface TaskModalProps {
-  task: any;
+  task: TaskData;
   projectId: string;
   onClose: () => void;
 }
 
-export const TaskModal = ({ task, projectId: _projectId, onClose }: TaskModalProps) => {
+export const TaskModal = ({ task, onClose }: TaskModalProps) => {
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState('');
+  const [newSubtask, setNewSubtask] = useState('');
 
+  // Comments
   const { data: comments = [], isLoading: isLoadingComments } = useQuery<Comment[]>({
     queryKey: ['task-comments', task.id],
     queryFn: async () => {
@@ -29,6 +43,17 @@ export const TaskModal = ({ task, projectId: _projectId, onClose }: TaskModalPro
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       });
       return res.data.comments;
+    },
+  });
+
+  // Subtasks
+  const { data: subtasks = [], isLoading: isLoadingSubtasks } = useQuery<Subtask[]>({
+    queryKey: ['task-subtasks', task.id],
+    queryFn: async () => {
+      const res = await axios.get(`${API_URL}/tasks/${task.id}/subtasks`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data.subtasks;
     },
   });
 
@@ -49,10 +74,57 @@ export const TaskModal = ({ task, projectId: _projectId, onClose }: TaskModalPro
     }
   });
 
+  const addSubtaskMutation = useMutation({
+    mutationFn: async (title: string) => {
+      const res = await axios.post(`${API_URL}/tasks/${task.id}/subtasks`, { title }, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-subtasks', task.id] });
+      setNewSubtask('');
+      toast.success('Subtask added');
+    },
+    onError: () => {
+      toast.error('Failed to add subtask');
+    }
+  });
+
+  const toggleSubtaskMutation = useMutation({
+    mutationFn: async (subtaskId: string) => {
+      const res = await axios.patch(`${API_URL}/subtasks/${subtaskId}/toggle`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-subtasks', task.id] });
+    },
+  });
+
+  const deleteSubtaskMutation = useMutation({
+    mutationFn: async (subtaskId: string) => {
+      await axios.delete(`${API_URL}/subtasks/${subtaskId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['task-subtasks', task.id] });
+      toast.success('Subtask removed');
+    },
+  });
+
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newComment.trim()) return;
     addCommentMutation.mutate(newComment);
+  };
+
+  const handleAddSubtask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubtask.trim()) return;
+    addSubtaskMutation.mutate(newSubtask);
   };
 
   const getPriorityVariant = (priority: string) => {
@@ -62,6 +134,20 @@ export const TaskModal = ({ task, projectId: _projectId, onClose }: TaskModalPro
       default: return 'info';
     }
   };
+
+  const getDueDateStyle = () => {
+    if (!task.dueDate) return {};
+    const due = new Date(task.dueDate);
+    if (task.status === 'done') return { variant: 'success' as const, label: 'Completed' };
+    if (isPast(due) && !isToday(due)) return { variant: 'danger' as const, label: 'Overdue' };
+    if (isToday(due)) return { variant: 'warning' as const, label: 'Due today' };
+    if (isTomorrow(due)) return { variant: 'warning' as const, label: 'Due tomorrow' };
+    return { variant: 'outline' as const, label: null };
+  };
+
+  const dueDateStyle = getDueDateStyle();
+  const completedSubtasks = subtasks.filter(s => s.completed).length;
+  const subtaskProgress = subtasks.length > 0 ? Math.round((completedSubtasks / subtasks.length) * 100) : 0;
 
   return (
     <div 
@@ -93,9 +179,10 @@ export const TaskModal = ({ task, projectId: _projectId, onClose }: TaskModalPro
                 {task.priority}
               </Badge>
               {task.dueDate && (
-                <Badge variant="outline" className="gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
+                <Badge variant={dueDateStyle.variant || 'outline'} className="gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
                   <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                   {format(new Date(task.dueDate), 'MMM d')}
+                  {dueDateStyle.label && <span className="font-bold">· {dueDateStyle.label}</span>}
                 </Badge>
               )}
             </div>
@@ -147,12 +234,105 @@ export const TaskModal = ({ task, projectId: _projectId, onClose }: TaskModalPro
                   <h3 className="font-semibold mb-1.5 sm:mb-2 flex items-center gap-2 text-xs sm:text-sm">
                     <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" /> Due Date
                   </h3>
-                  <div className="bg-muted/20 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-border/30 text-xs sm:text-sm font-medium">
+                  <div className={cn(
+                    "bg-muted/20 p-2.5 sm:p-3 rounded-lg sm:rounded-xl border text-xs sm:text-sm font-medium",
+                    dueDateStyle.variant === 'danger' ? 'border-red-500/30 bg-red-500/5 text-red-600 dark:text-red-400' :
+                    dueDateStyle.variant === 'warning' ? 'border-amber-500/30 bg-amber-500/5 text-amber-600 dark:text-amber-400' :
+                    'border-border/30'
+                  )}>
                     {format(new Date(task.dueDate), 'MMM d, yyyy')}
+                    {dueDateStyle.label && <span className="block text-[10px] mt-0.5 font-bold">{dueDateStyle.label}</span>}
                   </div>
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Subtasks / Checklist */}
+          <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-border/30">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold flex items-center gap-2 text-xs sm:text-sm">
+                <ListChecks className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" /> 
+                Checklist ({completedSubtasks}/{subtasks.length})
+              </h3>
+              {subtasks.length > 0 && (
+                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">{subtaskProgress}%</span>
+              )}
+            </div>
+
+            {/* Progress bar */}
+            {subtasks.length > 0 && (
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className={cn(
+                    "h-full rounded-full transition-all duration-700 ease-out",
+                    subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-primary'
+                  )}
+                  style={{ width: `${subtaskProgress}%` }}
+                />
+              </div>
+            )}
+
+            <div className="space-y-1.5 sm:space-y-2">
+              {isLoadingSubtasks ? (
+                <div className="flex items-center justify-center py-4 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+              ) : subtasks.length === 0 ? (
+                <div className="text-center py-3 sm:py-4 border-2 border-dashed border-border/30 rounded-lg sm:rounded-xl">
+                  <ListChecks className="w-6 h-6 text-muted-foreground/20 mx-auto mb-1" />
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">No checklist items yet.</p>
+                </div>
+              ) : (
+                subtasks.map((subtask) => (
+                  <div 
+                    key={subtask.id} 
+                    className={cn(
+                      "flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-lg border border-border/30 group transition-all duration-200 hover:border-primary/20",
+                      subtask.completed && "bg-muted/20 opacity-70"
+                    )}
+                  >
+                    <button
+                      onClick={() => toggleSubtaskMutation.mutate(subtask.id)}
+                      className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      {subtask.completed ? (
+                        <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
+                      ) : (
+                        <Square className="w-4 h-4 sm:w-5 sm:h-5" />
+                      )}
+                    </button>
+                    <span className={cn(
+                      "text-xs sm:text-sm flex-1 transition-all",
+                      subtask.completed && "line-through text-muted-foreground"
+                    )}>
+                      {subtask.title}
+                    </span>
+                    <button
+                      onClick={() => deleteSubtaskMutation.mutate(subtask.id)}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Add subtask form */}
+            <form onSubmit={handleAddSubtask} className="flex gap-2 items-center">
+              <div className="flex-1">
+                <Input 
+                  placeholder="Add a checklist item..." 
+                  value={newSubtask} 
+                  onChange={(e) => setNewSubtask(e.target.value)} 
+                  className="bg-muted/30 border-border/50 text-sm h-9"
+                />
+              </div>
+              <Button type="submit" disabled={!newSubtask.trim() || addSubtaskMutation.isPending} size="sm" variant="outline" className="shrink-0 h-9">
+                {addSubtaskMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              </Button>
+            </form>
           </div>
 
           {/* Comments Section */}

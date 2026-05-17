@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import axios from 'axios';
 
-type User = { id: string; name: string; email: string };
+type User = { id: string; name: string; email: string; avatar?: string };
 
 interface AuthContextType {
   user: User | null;
