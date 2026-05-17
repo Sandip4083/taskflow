@@ -9,9 +9,9 @@
 # ⚡ TaskFlow — Premium Project Management
 
 > A production-grade, full-stack Kanban task management platform for modern teams.  
-> Organize projects, drag-and-drop tasks, track analytics, and collaborate — all in real-time.
+> Organize projects, drag-and-drop tasks, track analytics, and collaborate — all with a premium UI.
 
-🔗 **Live Demo:** [https://sandip4083.github.io/taskflow/](https://sandip4083.github.io/taskflow/)
+🔗 **Live Demo:** [https://taskflow-inky-theta.vercel.app/](https://taskflow-inky-theta.vercel.app/)
 
 ---
 
@@ -20,26 +20,33 @@
 | Feature | Description |
 |---------|-------------|
 | 🔐 **JWT Authentication** | Secure login/signup with access + refresh tokens and bcrypt hashing |
-| 📋 **Kanban Board** | Drag-and-drop tasks across Todo, In Progress, and Done columns |
-| 📊 **Analytics Dashboard** | Task stats, project progress charts, priority breakdown |
-| 📅 **Calendar View** | Visual calendar with color-coded task deadlines |
+| 📋 **Kanban Board** | Drag-and-drop tasks across Todo, In Progress, and Done columns with optimistic UI |
+| 🔍 **Global Search (Ctrl+K)** | Command palette to instantly search projects, tasks, and pages |
+| 🏷️ **Kanban Filters** | Filter tasks by priority, search by title/description, with active filter badges |
+| 📊 **Analytics Dashboard** | Task stats, project progress charts, priority breakdown, recent activity timeline |
+| 📅 **Calendar View** | Visual calendar with color-coded task deadlines and overdue alerts |
 | 🔔 **Notifications** | In-app notifications for assignments, comments, and invites |
-| 🌙 **Dark/Light/System Theme** | Persistent theme toggle with OS preference detection |
+| 📷 **Avatar Upload** | Profile picture upload with preview, stored as base64 |
+| 📥 **CSV Export** | One-click download of project tasks as a spreadsheet |
+| 👥 **Team Members** | View project members, invite new members by email |
+| 🎉 **Celebration Effects** | Confetti animation when all tasks are completed |
+| 🌙 **Dark/Light Theme** | Persistent theme toggle with smooth transitions |
 | 📱 **Fully Responsive** | Optimized for mobile (375px), tablet (768px), and desktop (1440px+) |
-| 💬 **Task Comments** | Threaded discussions on each task with real-time updates |
+| 💬 **Task Comments** | Threaded discussions on each task |
+| ✅ **Subtasks/Checklists** | Break tasks into smaller actionable subtasks |
 | 🎯 **Priority & Due Dates** | High/Medium/Low priority badges, due date tracking, overdue alerts |
-| 🔄 **Real-Time Updates** | Socket.IO for live task syncing across team members |
 | 📈 **Progress Tracking** | Per-project completion percentage with visual progress bars |
 | 🔑 **Password Strength Meter** | Real-time password strength feedback during registration |
+| 🦴 **Skeleton Loading** | Premium skeleton cards with shimmer animation instead of spinners |
 
 ---
 
 ## 🛠️ Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+|-------|-----------| 
 | **Frontend** | React 19, TypeScript, Vite 8, TailwindCSS v3, React Router v7 |
-| **Backend** | Node.js, Express 5, TypeScript, Socket.IO |
+| **Backend** | Node.js, Express 5, TypeScript |
 | **Database** | MongoDB Atlas (Mongoose ODM) |
 | **Auth** | JWT (access + refresh tokens), bcryptjs |
 | **Charts** | Recharts (Pie, Bar charts) |
@@ -47,8 +54,8 @@
 | **State** | TanStack React Query v5, React Context |
 | **Styling** | TailwindCSS, clsx, tailwind-merge, Inter (Google Fonts) |
 | **Icons** | Lucide React |
+| **Notifications** | Sonner (toast notifications) |
 | **Deployment** | Vercel (Serverless API + Static SPA) |
-| **Containerization** | Docker (multi-stage build with NGINX) |
 
 ---
 
@@ -57,26 +64,27 @@
 ```
 taskflow/
 ├── api/                          # Vercel serverless entry point
-│   └── index.ts                  # Re-exports Express app
+│   └── index.ts                  # Delegates requests to Express app
 │
 ├── frontend/                     # React + Vite + TypeScript
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── layout/           # Navbar, Sidebar (responsive)
 │   │   │   ├── ui/               # Button, Card, Input, Badge, Avatar
+│   │   │   ├── CommandPalette.tsx # Ctrl+K global search
 │   │   │   ├── TaskModal.tsx     # Full task detail modal
 │   │   │   └── ErrorBoundary.tsx # Graceful crash recovery
 │   │   ├── context/
-│   │   │   ├── AuthContext.tsx    # JWT auth + axios interceptors
-│   │   │   └── ThemeContext.tsx   # Dark/Light/System persistence
+│   │   │   ├── AuthContext.tsx    # JWT auth + user state
+│   │   │   └── ThemeContext.tsx   # Dark/Light persistence
 │   │   ├── pages/
 │   │   │   ├── Login.tsx         # Premium login with feature showcase
 │   │   │   ├── Register.tsx      # Registration with password strength
-│   │   │   ├── ProjectList.tsx   # Project grid with search
-│   │   │   ├── ProjectDetail.tsx # Kanban board + drag-and-drop
+│   │   │   ├── ProjectList.tsx   # Project grid with skeleton loading
+│   │   │   ├── ProjectDetail.tsx # Kanban board + filters + CSV export
 │   │   │   ├── Dashboard.tsx     # Analytics with Recharts
 │   │   │   ├── CalendarView.tsx  # Monthly calendar with tasks
-│   │   │   └── Settings.tsx      # Profile, theme, notifications
+│   │   │   └── Settings.tsx      # Profile avatar, theme, preferences
 │   │   └── config.ts            # API URL configuration
 │   ├── index.html               # SEO-optimized with meta tags
 │   └── tailwind.config.js       # Custom design tokens
@@ -84,17 +92,17 @@ taskflow/
 ├── backend/                      # Node.js + Express + MongoDB
 │   ├── src/
 │   │   ├── config/              # DB connection, environment
-│   │   ├── models/              # User, Project, Task, Comment, Notification
-│   │   ├── controllers/         # Auth, Project, Task, Analytics, Comments
+│   │   ├── models/              # User, Project, Task, Comment, Notification, Subtask
+│   │   ├── controllers/         # Auth, Project, Task, Analytics, Comments, Users, Subtasks
 │   │   ├── routes/              # REST API route definitions
-│   │   ├── middleware/          # Auth, roles, validation, error handling
-│   │   ├── services/           # Auth tokens, notifications
-│   │   ├── socket/             # Socket.IO real-time handlers
-│   │   └── server.ts           # Express + Socket.IO entry
-│   └── .env                    # Environment variables
+│   │   ├── middleware/          # Auth, validation, error handling
+│   │   ├── services/           # Auth tokens, notification creation
+│   │   └── server.ts           # Express entry (serverless-ready)
+│   └── .env                    # Environment variables (not committed)
 │
 ├── vercel.json                  # Vercel deployment config
-└── docker-compose.yml           # Docker containerization
+├── tsconfig.json                # Root TypeScript config for API
+└── package.json                 # Root scripts & shared dependencies
 ```
 
 ### Design Principles
@@ -103,6 +111,7 @@ taskflow/
 - **Glassmorphism UI** — Backdrop blur, gradient accents, smooth shadows
 - **Staggered Animations** — Entrance animations with progressive delays
 - **Mobile-First Responsive** — Every component adapts from 375px to 1440px+
+- **Serverless-Ready** — Lazy DB connection with caching for cold starts
 
 ---
 
@@ -121,9 +130,7 @@ git clone https://github.com/Sandip4083/taskflow.git
 cd taskflow
 
 # Install all dependencies
-npm install
-cd backend && npm install && cd ..
-cd frontend && npm install && cd ..
+npm run install:all
 
 # Start both servers (backend + frontend)
 npm run dev
@@ -150,13 +157,6 @@ CLIENT_URL=http://localhost:5173
 VITE_API_BASE_URL=http://localhost:4000/api
 ```
 
-### Docker (Production)
-
-```bash
-docker compose up -d --build
-# Frontend: http://localhost:3000
-```
-
 ---
 
 ## ☁️ Vercel Deployment
@@ -170,7 +170,13 @@ The app is pre-configured for Vercel with `vercel.json`:
    - `JWT_REFRESH_SECRET`
    - `CLIENT_URL` (your Vercel deployment URL)
 3. **Whitelist Vercel IPs** in MongoDB Atlas → Network Access → Allow `0.0.0.0/0`
-4. **Deploy** — API routes to serverless, frontend to static CDN
+4. **Deploy** — API routes go to serverless functions, frontend to static CDN
+
+### How it works
+- `api/index.ts` exports a Vercel serverless handler wrapping the Express app
+- `vercel-build` script builds frontend to `build-output/` for static hosting
+- Routes: `/api/*` → serverless function, `/*` → SPA `index.html`
+- CORS headers configured at edge level for API reliability
 
 ---
 
@@ -220,6 +226,18 @@ All endpoints are prefixed with `/api`. Protected routes require `Authorization:
 </details>
 
 <details>
+<summary><b>📝 Subtasks</b></summary>
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/api/tasks/:taskId/subtasks` | List subtasks | ✓ |
+| `POST` | `/api/tasks/:taskId/subtasks` | Create subtask | ✓ |
+| `PATCH` | `/api/subtasks/:id` | Update subtask | ✓ |
+| `DELETE` | `/api/subtasks/:id` | Delete subtask | ✓ |
+
+</details>
+
+<details>
 <summary><b>💬 Comments</b></summary>
 
 | Method | Endpoint | Description | Auth |
@@ -231,35 +249,19 @@ All endpoints are prefixed with `/api`. Protected routes require `Authorization:
 </details>
 
 <details>
-<summary><b>📊 Analytics & More</b></summary>
+<summary><b>📊 Analytics & Users</b></summary>
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | `GET` | `/api/analytics/overview` | Task stats, project progress | ✓ |
 | `GET` | `/api/analytics/productivity` | Weekly completion metrics | ✓ |
 | `GET` | `/api/users` | List all users | ✓ |
+| `PATCH` | `/api/users/avatar` | Upload profile avatar (base64) | ✓ |
 | `GET` | `/api/notifications` | Get notifications | ✓ |
 | `PATCH` | `/api/notifications/:id/read` | Mark as read | ✓ |
-| `GET` | `/api/health` | Server status | ✗ |
+| `GET` | `/api/health` | Server health check | ✗ |
 
 </details>
-
----
-
-## 🔌 Real-Time Events (Socket.IO)
-
-Connections authenticated via JWT in handshake.
-
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `project:join` | Client → Server | Join project room |
-| `task:create` | Client → Server | Broadcast new task |
-| `task:update` | Client → Server | Broadcast task change |
-| `task:delete` | Client → Server | Broadcast task deletion |
-| `task:created` | Server → Client | Receive new task |
-| `task:updated` | Server → Client | Receive task change |
-| `task:deleted` | Server → Client | Receive task deletion |
-| `notification:new` | Server → Client | Receive notification |
 
 ---
 
@@ -271,6 +273,17 @@ Connections authenticated via JWT in handshake.
 | **Tablet** | 768px | 2-column grids, expanded nav, medium charts |
 | **Laptop** | 1024px | 3-column kanban, full sidebar, full charts |
 | **Desktop** | 1440px+ | Max-width containers, feature showcase on auth pages |
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+K` / `⌘+K` | Open global search palette |
+| `↑↓` | Navigate search results |
+| `Enter` | Open selected result |
+| `Esc` | Close search / modals |
 
 ---
 
