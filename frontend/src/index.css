@@ -212,13 +212,13 @@
 @layer utilities {
   .glass {
     background: hsl(var(--card) / 0.7);
-    backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
+    backdrop-filter: blur(12px) saturate(180%);
   }
   .glass-heavy {
     background: hsl(var(--card) / 0.85);
-    backdrop-filter: blur(20px) saturate(200%);
     -webkit-backdrop-filter: blur(20px) saturate(200%);
+    backdrop-filter: blur(20px) saturate(200%);
   }
 }
 
@@ -243,5 +243,84 @@
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite;
     border-radius: var(--radius);
+  }
+}
+
+/* Drag placeholder pulse */
+@keyframes drag-placeholder-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.01); }
+}
+
+@layer utilities {
+  .drag-placeholder {
+    animation: drag-placeholder-pulse 1.5s ease-in-out infinite;
+    border: 2px dashed hsl(var(--primary) / 0.4);
+    background: hsl(var(--primary) / 0.05);
+    border-radius: var(--radius);
+  }
+}
+
+/* Bulk selection checkbox */
+@keyframes checkbox-pop {
+  0% { transform: scale(0.8); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@layer utilities {
+  .bulk-checkbox {
+    animation: checkbox-pop 0.2s ease-out both;
+  }
+  .bulk-selected {
+    outline: 2px solid hsl(var(--primary) / 0.5);
+    outline-offset: -1px;
+    background: hsl(var(--primary) / 0.03);
+  }
+}
+
+/* Column collapse transition */
+@keyframes column-collapse {
+  from { max-height: 2000px; opacity: 1; }
+  to { max-height: 0; opacity: 0; }
+}
+
+@keyframes column-expand {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: 2000px; opacity: 1; }
+}
+
+@layer utilities {
+  .column-content-enter {
+    animation: column-expand 0.3s ease-out both;
+    overflow: hidden;
+  }
+  .column-content-exit {
+    animation: column-collapse 0.3s ease-out both;
+    overflow: hidden;
+  }
+}
+
+/* Quick status menu */
+@keyframes menu-slide-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@layer utilities {
+  .status-menu {
+    animation: menu-slide-in 0.15s ease-out both;
+  }
+}
+
+/* Bulk actions toolbar slide */
+@keyframes toolbar-slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@layer utilities {
+  .bulk-toolbar {
+    animation: toolbar-slide-up 0.25s ease-out both;
   }
 }

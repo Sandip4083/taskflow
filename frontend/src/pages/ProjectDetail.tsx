@@ -10,7 +10,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Badge } from '../components/ui/Badge';
 import { Avatar } from '../components/ui/Avatar';
-import { Plus, ArrowLeft, Trash2, Calendar, AlertCircle, Loader2, GripVertical, CheckCircle2, Search, Filter, Download, UserPlus, X as XIcon } from 'lucide-react';
+import { Plus, ArrowLeft, Trash2, Calendar, AlertCircle, Loader2, GripVertical, CheckCircle2, Search, Filter, Download, UserPlus, X as XIcon, ChevronDown, ChevronRight, Circle, ArrowRightCircle, CheckCircle, MoreHorizontal, Layers } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { toast } from 'sonner';
 
@@ -20,10 +20,12 @@ type Task = { id: string; title: string; description: string; status: string; pr
 type Project = { id: string; name: string; description: string; owner: string; members: string[]; tasks: Task[] };
 
 const statusConfig = {
-  todo: { label: 'To Do', color: 'bg-slate-400', headerBg: 'from-slate-500/10 to-transparent', borderColor: 'border-slate-300/30 dark:border-slate-600/30' },
-  in_progress: { label: 'In Progress', color: 'bg-blue-500', headerBg: 'from-blue-500/10 to-transparent', borderColor: 'border-blue-300/30 dark:border-blue-600/30' },
-  done: { label: 'Done', color: 'bg-emerald-500', headerBg: 'from-emerald-500/10 to-transparent', borderColor: 'border-emerald-300/30 dark:border-emerald-600/30' },
+  todo: { label: 'To Do', color: 'bg-slate-400', headerBg: 'from-slate-500/10 to-transparent', borderColor: 'border-slate-300/30 dark:border-slate-600/30', icon: Circle, iconColor: 'text-slate-400' },
+  in_progress: { label: 'In Progress', color: 'bg-blue-500', headerBg: 'from-blue-500/10 to-transparent', borderColor: 'border-blue-300/30 dark:border-blue-600/30', icon: ArrowRightCircle, iconColor: 'text-blue-500' },
+  done: { label: 'Done', color: 'bg-emerald-500', headerBg: 'from-emerald-500/10 to-transparent', borderColor: 'border-emerald-300/30 dark:border-emerald-600/30', icon: CheckCircle, iconColor: 'text-emerald-500' },
 };
+
+const STATUSES = ['todo', 'in_progress', 'done'] as const;
 
 export const ProjectDetail = () => {
   const { id } = useParams();
@@ -42,6 +44,12 @@ export const ProjectDetail = () => {
   const [showMemberModal, setShowMemberModal] = useState(false);
   const [memberEmail, setMemberEmail] = useState('');
   const confettiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // New features state
+  const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(new Set());
+  const [selectedTasks, setSelectedTasks] = useState<Set<string>>(new Set());
+  const [bulkMode, setBulkMode] = useState(false);
+  const [statusMenuTaskId, setStatusMenuTaskId] = useState<string | null>(null);
 
   const { data: project, isLoading, error } = useQuery<Project>({
     queryKey: ['project', id],
@@ -145,64 +153,122 @@ export const ProjectDetail = () => {
     }
   });
 
+  // ── FIXED drag-and-drop handler ──────────────────────────────────
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+    if (!project) return;
 
-    const task = project?.tasks.find(t => t.id === draggableId);
+    const task = project.tasks.find(t => t.id === draggableId);
     if (!task) return;
 
-    // Cross-column move: update status
-    if (destination.droppableId !== source.droppableId) {
+    // Step 1: Build column arrays (clean copies, no shared references)
+    const columns: Record<string, Task[]> = {};
+    for (const status of STATUSES) {
+      columns[status] = project.tasks
+        .filter(t => t.status === status)
+        .map(t => ({ ...t })); // shallow clone each task
+    }
+
+    // Step 2: Remove the dragged task from the source column
+    const sourceColumn = columns[source.droppableId];
+    const [removedTask] = sourceColumn.splice(source.index, 1);
+
+    // Step 3: Update status if cross-column move
+    if (source.droppableId !== destination.droppableId) {
+      removedTask.status = destination.droppableId;
+    }
+
+    // Step 4: Insert into destination column at the correct index
+    const destColumn = columns[destination.droppableId];
+    destColumn.splice(destination.index, 0, removedTask);
+
+    // Step 5: Flatten all columns back into a single array
+    const reordered = STATUSES.flatMap(status => columns[status]);
+
+    // Step 6: Optimistic UI update
+    queryClient.setQueryData(['project', id], {
+      ...project,
+      tasks: reordered,
+    });
+
+    // Step 7: Persist cross-column status change to the server
+    if (source.droppableId !== destination.droppableId) {
       updateTaskMutation.mutate({ taskId: draggableId, updates: { status: destination.droppableId } });
-      
+
       const destLabel = statusConfig[destination.droppableId as keyof typeof statusConfig]?.label;
       if (destination.droppableId === 'done') {
         toast.success(`✅ Task completed!`);
-        // Check if this was the last undone task
-        const remainingUndone = project?.tasks.filter(t => t.id !== draggableId && t.status !== 'done').length ?? 1;
+        const remainingUndone = project.tasks.filter(t => t.id !== draggableId && t.status !== 'done').length;
         if (remainingUndone === 0) triggerConfetti();
       } else {
         toast.success(`Task moved to ${destLabel}`);
       }
     }
+  };
 
-    // Optimistic reorder within column
-    if (project) {
-      const updatedTasks = [...project.tasks];
-      const sourceColumn = updatedTasks.filter(t => t.status === source.droppableId);
-      const [removed] = sourceColumn.splice(source.index, 1);
-      
-      if (destination.droppableId === source.droppableId) {
-        sourceColumn.splice(destination.index, 0, removed);
-      } else {
-        removed.status = destination.droppableId;
-        const destColumn = updatedTasks.filter(t => t.status === destination.droppableId && t.id !== removed.id);
-        destColumn.splice(destination.index, 0, removed);
-      }
+  // ── Quick status change ────────────────────────────────────────
+  const handleQuickStatusChange = (taskId: string, newStatus: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setStatusMenuTaskId(null);
+    const task = project?.tasks.find(t => t.id === taskId);
+    if (!task || task.status === newStatus) return;
+    
+    updateTaskMutation.mutate({ taskId, updates: { status: newStatus } });
 
-      // Rebuild the tasks array maintaining the new order
-      const reordered = ['todo', 'in_progress', 'done'].flatMap(status => {
-        if (status === source.droppableId && status === destination.droppableId) {
-          return sourceColumn;
-        }
-        if (status === source.droppableId) {
-          return updatedTasks.filter(t => t.status === status && t.id !== removed.id);
-        }
-        if (status === destination.droppableId) {
-          const col = updatedTasks.filter(t => t.status === status && t.id !== removed.id);
-          col.splice(destination.index, 0, { ...removed, status: destination.droppableId });
-          return col;
-        }
-        return updatedTasks.filter(t => t.status === status);
-      });
-
-      queryClient.setQueryData(['project', id], {
-        ...project,
-        tasks: reordered,
-      });
+    const destLabel = statusConfig[newStatus as keyof typeof statusConfig]?.label;
+    if (newStatus === 'done') {
+      toast.success(`✅ Task completed!`);
+      const remainingUndone = project?.tasks.filter(t => t.id !== taskId && t.status !== 'done').length ?? 1;
+      if (remainingUndone === 0) triggerConfetti();
+    } else {
+      toast.success(`Task moved to ${destLabel}`);
     }
+  };
+
+  // ── Bulk actions ──────────────────────────────────────────────
+  const toggleTaskSelection = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTasks(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = () => {
+    if (!confirm(`Delete ${selectedTasks.size} selected task(s)?`)) return;
+    selectedTasks.forEach(taskId => deleteTaskMutation.mutate(taskId));
+    setSelectedTasks(new Set());
+    setBulkMode(false);
+    toast.success(`${selectedTasks.size} task(s) deleted`);
+  };
+
+  const handleBulkMove = (newStatus: string) => {
+    selectedTasks.forEach(taskId => {
+      updateTaskMutation.mutate({ taskId, updates: { status: newStatus } });
+    });
+    const destLabel = statusConfig[newStatus as keyof typeof statusConfig]?.label;
+    toast.success(`${selectedTasks.size} task(s) moved to ${destLabel}`);
+    setSelectedTasks(new Set());
+    setBulkMode(false);
+  };
+
+  const toggleBulkMode = () => {
+    setBulkMode(prev => !prev);
+    if (bulkMode) setSelectedTasks(new Set());
+  };
+
+  // ── Column collapse ──────────────────────────────────────────
+  const toggleColumnCollapse = (status: string) => {
+    setCollapsedColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
   };
 
   if (isLoading) {
@@ -357,7 +423,7 @@ export const ProjectDetail = () => {
             className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-card border border-border/50 rounded-lg focus:ring-2 focus:ring-primary/30 focus:outline-none focus:border-primary/50 transition-all"
           />
           {filterSearch && (
-            <button onClick={() => setFilterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-muted rounded">
+            <button onClick={() => setFilterSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 hover:bg-muted rounded" title="Clear search">
               <XIcon className="w-3 h-3 text-muted-foreground" />
             </button>
           )}
@@ -391,7 +457,55 @@ export const ProjectDetail = () => {
         >
           <UserPlus className="w-3.5 h-3.5" /> Members
         </button>
+
+        {/* Bulk select toggle */}
+        <button
+          onClick={toggleBulkMode}
+          className={`flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm border rounded-lg transition-all ${
+            bulkMode ? 'border-primary/50 bg-primary/5 text-primary' : 'border-border/50 bg-card text-muted-foreground hover:border-primary/30'
+          }`}
+          title="Toggle bulk selection mode"
+        >
+          <Layers className="w-3.5 h-3.5" /> Select
+        </button>
       </div>
+
+      {/* Bulk actions toolbar */}
+      {bulkMode && selectedTasks.size > 0 && (
+        <div className="flex-shrink-0 mb-4 p-3 bg-primary/5 border border-primary/20 rounded-xl flex flex-wrap gap-2 items-center bulk-toolbar">
+          <span className="text-xs sm:text-sm font-semibold text-primary mr-2">
+            {selectedTasks.size} selected
+          </span>
+          <div className="flex gap-1.5">
+            {STATUSES.map(status => {
+              const config = statusConfig[status];
+              return (
+                <button
+                  key={status}
+                  onClick={() => handleBulkMove(status)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] sm:text-xs font-medium bg-card border border-border/50 rounded-lg hover:border-primary/30 transition-all"
+                >
+                  <div className={`w-2 h-2 rounded-full ${config.color}`} />
+                  {config.label}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={handleBulkDelete}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-[10px] sm:text-xs font-medium text-destructive bg-destructive/5 border border-destructive/20 rounded-lg hover:bg-destructive/10 transition-all ml-auto"
+          >
+            <Trash2 className="w-3 h-3" /> Delete
+          </button>
+          <button
+            onClick={() => { setSelectedTasks(new Set()); setBulkMode(false); }}
+            className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground transition-all"
+            title="Clear selection"
+          >
+            <XIcon className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Filter panel */}
       {showFilters && (
@@ -433,7 +547,7 @@ export const ProjectDetail = () => {
         <div className="flex-shrink-0 mb-4 p-4 bg-card border border-border/50 rounded-xl animate-scale-in">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold">Team Members</h3>
-            <button onClick={() => setShowMemberModal(false)} className="p-1 hover:bg-muted rounded">
+            <button onClick={() => setShowMemberModal(false)} className="p-1 hover:bg-muted rounded" title="Close members panel">
               <XIcon className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
@@ -478,7 +592,7 @@ export const ProjectDetail = () => {
               </div>
               <div>
                  <label className="text-xs sm:text-sm font-medium leading-none block mb-1.5 sm:mb-2">Priority</label>
-                 <select className="flex h-10 sm:h-11 w-full rounded-lg border border-input bg-background px-3 sm:px-4 py-2 text-sm focus:ring-2 focus:ring-primary/50 focus:outline-none transition-all" value={newTask.priority} onChange={e => setNewTask({...newTask, priority: e.target.value})}>
+                 <select aria-label="Task priority" className="flex h-10 sm:h-11 w-full rounded-lg border border-input bg-background px-3 sm:px-4 py-2 text-sm focus:ring-2 focus:ring-primary/50 focus:outline-none transition-all" value={newTask.priority} onChange={e => setNewTask({...newTask, priority: e.target.value})}>
                    <option value="low">Low</option>
                    <option value="medium">Medium</option>
                    <option value="high">High</option>
@@ -504,110 +618,214 @@ export const ProjectDetail = () => {
         {/* Horizontal scroll on mobile for the kanban columns */}
         <div className="flex-1 min-h-[400px] sm:min-h-[500px] pb-4" style={{ overflowX: 'auto' }}>
           <div className="grid grid-cols-3 gap-3 sm:gap-6 min-w-[720px] md:min-w-0 h-full">
-            {(['todo', 'in_progress', 'done'] as const).map(status => {
+            {STATUSES.map(status => {
               const config = statusConfig[status];
+              const isCollapsed = collapsedColumns.has(status);
+              const columnTasks = groupedTasks[status];
+              const columnPercentage = totalTasks > 0 ? Math.round((columnTasks.length / totalTasks) * 100) : 0;
+
               return (
                 <div key={status} className={`bg-gradient-to-b ${config.headerBg} rounded-xl sm:rounded-2xl flex flex-col border ${config.borderColor} h-full overflow-hidden animate-fade-in-up`}>
-                  <h3 className="font-semibold p-3 sm:p-4 capitalize flex justify-between items-center text-foreground shrink-0 border-b border-border/30 text-xs sm:text-base">
+                  {/* Column header */}
+                  <div className="font-semibold p-3 sm:p-4 capitalize flex justify-between items-center text-foreground shrink-0 border-b border-border/30 text-xs sm:text-base">
                     <div className="flex items-center gap-1.5 sm:gap-2.5">
+                      {/* Collapse/expand toggle */}
+                      <button
+                        onClick={() => toggleColumnCollapse(status)}
+                        className="p-0.5 hover:bg-muted/50 rounded transition-all"
+                        title={isCollapsed ? 'Expand column' : 'Collapse column'}
+                      >
+                        {isCollapsed 
+                          ? <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                          : <ChevronDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+                        }
+                      </button>
                       <div className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full ${config.color} shadow-sm`} />
                       <span>{config.label}</span>
                     </div>
-                    <span className="bg-background/80 border border-border/50 text-muted-foreground text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 rounded-full font-bold shadow-sm">
-                      {groupedTasks[status].length}
-                    </span>
-                  </h3>
+                    <div className="flex items-center gap-1.5">
+                      {/* Column percentage */}
+                      {totalTasks > 0 && (
+                        <span className="text-[9px] sm:text-[10px] text-muted-foreground/60 font-medium">
+                          {columnPercentage}%
+                        </span>
+                      )}
+                      <span className="bg-background/80 border border-border/50 text-muted-foreground text-[10px] sm:text-xs px-1.5 sm:px-2.5 py-0.5 rounded-full font-bold shadow-sm">
+                        {columnTasks.length}
+                      </span>
+                    </div>
+                  </div>
                   
-                  <Droppable droppableId={status}>
-                    {(provided, snapshot) => (
-                      <div 
-                        className={`flex-1 p-2 sm:p-3 overflow-y-auto custom-scrollbar transition-all duration-200 ${snapshot.isDraggingOver ? 'bg-primary/5 ring-2 ring-primary/20 ring-inset rounded-b-xl' : ''}`}
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                      >
-                        <div className="space-y-2 sm:space-y-3 min-h-[80px] sm:min-h-[100px]">
-                          {groupedTasks[status].map((task, index) => (
-                            <Draggable key={task.id} draggableId={task.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  style={{ ...provided.draggableProps.style }}
-                                >
-                                  <Card 
-                                    onClick={() => setSelectedTask(task)}
-                                    className={`cursor-pointer transition-all duration-200 bg-card group ${
-                                      snapshot.isDragging 
-                                        ? 'shadow-2xl ring-2 ring-primary/40 scale-[1.03] rotate-[1deg]' 
-                                        : 'shadow-sm hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5'
-                                    }`}
+                  {/* Column content — collapsible */}
+                  {!isCollapsed && (
+                    <Droppable droppableId={status}>
+                      {(provided, snapshot) => (
+                        <div 
+                          className={`flex-1 p-2 sm:p-3 overflow-y-auto custom-scrollbar transition-all duration-200 ${snapshot.isDraggingOver ? 'bg-primary/5 ring-2 ring-primary/20 ring-inset rounded-b-xl' : ''}`}
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                        >
+                          <div className="space-y-2 sm:space-y-3 min-h-[80px] sm:min-h-[100px]">
+                            {columnTasks.map((task, index) => (
+                              <Draggable key={task.id} draggableId={task.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <div
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    style={{ ...provided.draggableProps.style }}
                                   >
-                                    <CardContent className="p-2.5 sm:p-4">
-                                      <div className="flex items-start gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
-                                        <div className="mt-0.5 text-muted-foreground/30 hover:text-muted-foreground transition-colors touch-manipulation">
-                                          <GripVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                                        </div>
-                                        <h4 className="font-medium text-xs sm:text-sm leading-tight flex-1 line-clamp-2">{task.title}</h4>
-                                      </div>
-                                      {task.description && <p className="text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-4 line-clamp-2 sm:pl-6 pl-5">{task.description}</p>}
-                                      
-                                      <div className="flex items-center justify-between mt-auto pt-1.5 sm:pt-2 border-t border-border/30">
-                                        <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                                          <Badge variant={getPriorityVariant(task.priority)} className="capitalize text-[8px] sm:text-[10px] px-1.5 sm:px-2 py-0">{task.priority}</Badge>
-                                          {task.dueDate && (() => {
-                                            const due = new Date(task.dueDate);
-                                            const isOverdue = task.status !== 'done' && isPast(due) && !dateIsToday(due);
-                                            const isDueToday = dateIsToday(due);
-                                            return (
-                                              <span className={`text-[8px] sm:text-[10px] flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-0.5 rounded font-medium ${
-                                                isOverdue ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
-                                                isDueToday ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
-                                                'text-muted-foreground bg-muted/50'
+                                    <Card 
+                                      onClick={() => !bulkMode ? setSelectedTask(task) : toggleTaskSelection(task.id, { stopPropagation: () => {} } as React.MouseEvent)}
+                                      className={`cursor-pointer transition-all duration-200 bg-card group ${
+                                        snapshot.isDragging 
+                                          ? 'shadow-2xl ring-2 ring-primary/40 scale-[1.03] rotate-[1deg]' 
+                                          : 'shadow-sm hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5'
+                                      } ${selectedTasks.has(task.id) ? 'ring-2 ring-primary/50 bg-primary/[0.03]' : ''}`}
+                                    >
+                                      <CardContent className="p-2.5 sm:p-4">
+                                        <div className="flex items-start gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
+                                          {/* Bulk selection checkbox */}
+                                          {bulkMode && (
+                                            <button
+                                              onClick={(e) => toggleTaskSelection(task.id, e)}
+                                              className="mt-0.5 shrink-0 bulk-checkbox"
+                                            >
+                                              <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                                                selectedTasks.has(task.id) 
+                                                  ? 'bg-primary border-primary' 
+                                                  : 'border-muted-foreground/30 hover:border-primary/50'
                                               }`}>
-                                                <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                                                {due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                {isOverdue && <span className="font-bold">!</span>}
-                                              </span>
-                                            );
-                                          })()}
+                                                {selectedTasks.has(task.id) && (
+                                                  <CheckCircle2 className="w-3 h-3 text-white" />
+                                                )}
+                                              </div>
+                                            </button>
+                                          )}
+                                          <div className="mt-0.5 text-muted-foreground/30 hover:text-muted-foreground transition-colors touch-manipulation">
+                                            <GripVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                          </div>
+                                          <h4 className="font-medium text-xs sm:text-sm leading-tight flex-1 line-clamp-2">{task.title}</h4>
+                                          
+                                          {/* Quick status menu trigger */}
+                                          <div className="relative shrink-0">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setStatusMenuTaskId(statusMenuTaskId === task.id ? null : task.id);
+                                              }}
+                                              className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-muted transition-all"
+                                              title="Change status"
+                                            >
+                                              <MoreHorizontal className="w-3.5 h-3.5 text-muted-foreground" />
+                                            </button>
+                                            
+                                            {/* Quick status dropdown */}
+                                            {statusMenuTaskId === task.id && (
+                                              <div className="absolute right-0 top-full mt-1 z-30 bg-card border border-border/50 rounded-lg shadow-xl p-1 min-w-[140px] status-menu">
+                                                {STATUSES.map(s => {
+                                                  const sConfig = statusConfig[s];
+                                                  const StatusIcon = sConfig.icon;
+                                                  return (
+                                                    <button
+                                                      key={s}
+                                                      onClick={(e) => handleQuickStatusChange(task.id, s, e)}
+                                                      className={`flex items-center gap-2 w-full px-2.5 py-1.5 text-xs rounded-md transition-all ${
+                                                        task.status === s 
+                                                          ? 'bg-primary/10 text-primary font-medium' 
+                                                          : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                                      }`}
+                                                    >
+                                                      <StatusIcon className={`w-3.5 h-3.5 ${sConfig.iconColor}`} />
+                                                      {sConfig.label}
+                                                      {task.status === s && <CheckCircle2 className="w-3 h-3 ml-auto text-primary" />}
+                                                    </button>
+                                                  );
+                                                })}
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
-                                        <div className="flex items-center gap-1">
-                                          {task.assignee ? (
-                                            <Avatar fallback={task.assignee.name} src={task.assignee.avatar} size="sm" className="w-5 h-5 sm:w-6 sm:h-6 text-[8px] sm:text-[9px]" />
-                                          ) : null}
-                                          <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all" 
-                                            onClick={(e) => { e.stopPropagation(); deleteTaskMutation.mutate(task.id); }}
-                                          >
-                                            <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                                          </Button>
+                                        {task.description && <p className="text-[10px] sm:text-xs text-muted-foreground mb-2 sm:mb-4 line-clamp-2 sm:pl-6 pl-5">{task.description}</p>}
+                                        
+                                        <div className="flex items-center justify-between mt-auto pt-1.5 sm:pt-2 border-t border-border/30">
+                                          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                                            <Badge variant={getPriorityVariant(task.priority)} className="capitalize text-[8px] sm:text-[10px] px-1.5 sm:px-2 py-0">{task.priority}</Badge>
+                                            {task.dueDate && (() => {
+                                              const due = new Date(task.dueDate);
+                                              const isOverdue = task.status !== 'done' && isPast(due) && !dateIsToday(due);
+                                              const isDueToday = dateIsToday(due);
+                                              return (
+                                                <span className={`text-[8px] sm:text-[10px] flex items-center gap-0.5 sm:gap-1 px-1 sm:px-1.5 py-0.5 rounded font-medium ${
+                                                  isOverdue ? 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20' :
+                                                  isDueToday ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' :
+                                                  'text-muted-foreground bg-muted/50'
+                                                }`}>
+                                                  <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                                  {due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                  {isOverdue && <span className="font-bold">!</span>}
+                                                </span>
+                                              );
+                                            })()}
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            {task.assignee ? (
+                                              <Avatar fallback={task.assignee.name} src={task.assignee.avatar} size="sm" className="w-5 h-5 sm:w-6 sm:h-6 text-[8px] sm:text-[9px]" />
+                                            ) : null}
+                                            <Button 
+                                              variant="ghost" 
+                                              size="icon" 
+                                              className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground/40 opacity-0 group-hover:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all" 
+                                              onClick={(e) => { e.stopPropagation(); deleteTaskMutation.mutate(task.id); }}
+                                            >
+                                              <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                                            </Button>
+                                          </div>
                                         </div>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                          {groupedTasks[status].length === 0 && !snapshot.isDraggingOver && (
-                            <div className="h-16 sm:h-24 flex items-center justify-center text-[10px] sm:text-xs text-muted-foreground/50 border-2 border-dashed border-border/30 rounded-lg sm:rounded-xl mx-1">
-                              Drop tasks here
-                            </div>
-                          )}
+                                      </CardContent>
+                                    </Card>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                            {columnTasks.length === 0 && !snapshot.isDraggingOver && (
+                              <div className="h-16 sm:h-24 flex flex-col items-center justify-center text-[10px] sm:text-xs text-muted-foreground/50 border-2 border-dashed border-border/30 rounded-lg sm:rounded-xl mx-1 gap-1">
+                                {status === 'todo' && totalTasks === 0 ? (
+                                  <>
+                                    <Plus className="w-4 h-4 text-muted-foreground/30" />
+                                    <span>Add your first task</span>
+                                  </>
+                                ) : (
+                                  <span>Drop tasks here</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </Droppable>
+                      )}
+                    </Droppable>
+                  )}
+
+                  {/* Collapsed state indicator */}
+                  {isCollapsed && (
+                    <div className="p-3 text-center">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground/50">
+                        {columnTasks.length} task{columnTasks.length !== 1 ? 's' : ''} hidden
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
       </DragDropContext>
+
+      {/* Close status menu when clicking elsewhere */}
+      {statusMenuTaskId && (
+        <div className="fixed inset-0 z-20" onClick={() => setStatusMenuTaskId(null)} />
+      )}
 
       {selectedTask && (
         <TaskModal 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import { API_URL } from '../config';
@@ -6,13 +6,14 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Badge } from './ui/Badge';
 import { Avatar } from './ui/Avatar';
-import { X, Calendar, Clock, User, MessageSquare, Send, Loader2, Activity, CheckSquare, Square, Plus, Trash2, ListChecks } from 'lucide-react';
+import { X, Calendar, Clock, User, MessageSquare, Send, Loader2, Activity, CheckSquare, Square, Plus, Trash2, ListChecks, Pencil, Check, Circle, ArrowRightCircle, CheckCircle, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isPast, isToday, isTomorrow } from 'date-fns';
 import { cn } from '../lib/utils';
 
 type Comment = { id: string; text: string; author: { _id: string, name: string }; createdAt: string; };
 type Subtask = { id: string; title: string; completed: boolean; };
+type ActivityLogEntry = { action: string; details?: string; timestamp: string; };
 
 type TaskData = {
   id: string;
@@ -22,6 +23,7 @@ type TaskData = {
   priority: string;
   assignee?: { _id: string; name: string; avatar?: string };
   dueDate?: string;
+  activityLog?: ActivityLogEntry[];
 };
 
 interface TaskModalProps {
@@ -30,10 +32,45 @@ interface TaskModalProps {
   onClose: () => void;
 }
 
-export const TaskModal = ({ task, onClose }: TaskModalProps) => {
+const statusOptions = [
+  { value: 'todo', label: 'To Do', icon: Circle, color: 'text-slate-400', bg: 'bg-slate-400' },
+  { value: 'in_progress', label: 'In Progress', icon: ArrowRightCircle, color: 'text-blue-500', bg: 'bg-blue-500' },
+  { value: 'done', label: 'Done', icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-500' },
+];
+
+const priorityOptions = [
+  { value: 'low', label: 'Low', color: 'text-blue-500', bg: 'bg-blue-500/10 border-blue-500/30' },
+  { value: 'medium', label: 'Medium', color: 'text-amber-500', bg: 'bg-amber-500/10 border-amber-500/30' },
+  { value: 'high', label: 'High', color: 'text-red-500', bg: 'bg-red-500/10 border-red-500/30' },
+];
+
+export const TaskModal = ({ task, projectId, onClose }: TaskModalProps) => {
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState('');
   const [newSubtask, setNewSubtask] = useState('');
+
+  // Inline editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editTitle, setEditTitle] = useState(task.title);
+  const [editDescription, setEditDescription] = useState(task.description || '');
+  const titleInputRef = useRef<HTMLInputElement>(null);
+  const descInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Dropdown state
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
+  
+  // Activity log toggle
+  const [showActivityLog, setShowActivityLog] = useState(false);
+
+  // Focus inputs when editing starts
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) titleInputRef.current.focus();
+  }, [isEditingTitle]);
+  useEffect(() => {
+    if (isEditingDescription && descInputRef.current) descInputRef.current.focus();
+  }, [isEditingDescription]);
 
   // Comments
   const { data: comments = [], isLoading: isLoadingComments } = useQuery<Comment[]>({
@@ -55,6 +92,37 @@ export const TaskModal = ({ task, onClose }: TaskModalProps) => {
       });
       return res.data.subtasks;
     },
+  });
+
+  // Fetch full task data (for activity log)
+  const { data: fullTaskData } = useQuery<TaskData>({
+    queryKey: ['task-detail', task.id],
+    queryFn: async () => {
+      const res = await axios.get(`${API_URL}/tasks/${task.id}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data;
+    },
+  });
+
+  const activityLog = fullTaskData?.activityLog || task.activityLog || [];
+
+  // Update task mutation (for inline edits, status, priority)
+  const updateTaskMutation = useMutation({
+    mutationFn: async (updates: Partial<TaskData>) => {
+      const res = await axios.patch(`${API_URL}/tasks/${task.id}`, updates, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      });
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['task-detail', task.id] });
+      queryClient.invalidateQueries({ queryKey: ['analytics-overview'] });
+    },
+    onError: () => {
+      toast.error('Failed to update task');
+    }
   });
 
   const addCommentMutation = useMutation({
@@ -127,13 +195,41 @@ export const TaskModal = ({ task, onClose }: TaskModalProps) => {
     addSubtaskMutation.mutate(newSubtask);
   };
 
-  const getPriorityVariant = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'danger';
-      case 'medium': return 'warning';
-      default: return 'info';
+  // Inline edit handlers
+  const handleSaveTitle = () => {
+    if (editTitle.trim() && editTitle !== task.title) {
+      updateTaskMutation.mutate({ title: editTitle.trim() });
+      toast.success('Title updated');
     }
+    setIsEditingTitle(false);
   };
+
+  const handleSaveDescription = () => {
+    if (editDescription !== task.description) {
+      updateTaskMutation.mutate({ description: editDescription });
+      toast.success('Description updated');
+    }
+    setIsEditingDescription(false);
+  };
+
+  const handleStatusChange = (newStatus: string) => {
+    if (newStatus !== task.status) {
+      updateTaskMutation.mutate({ status: newStatus });
+      const label = statusOptions.find(s => s.value === newStatus)?.label;
+      toast.success(`Status changed to ${label}`);
+    }
+    setShowStatusDropdown(false);
+  };
+
+  const handlePriorityChange = (newPriority: string) => {
+    if (newPriority !== task.priority) {
+      updateTaskMutation.mutate({ priority: newPriority });
+      toast.success(`Priority changed to ${newPriority}`);
+    }
+    setShowPriorityDropdown(false);
+  };
+
+
 
   const getDueDateStyle = () => {
     if (!task.dueDate) return {};
@@ -148,6 +244,9 @@ export const TaskModal = ({ task, onClose }: TaskModalProps) => {
   const dueDateStyle = getDueDateStyle();
   const completedSubtasks = subtasks.filter(s => s.completed).length;
   const subtaskProgress = subtasks.length > 0 ? Math.round((completedSubtasks / subtasks.length) * 100) : 0;
+
+  const currentStatus = statusOptions.find(s => s.value === task.status);
+  const currentPriority = priorityOptions.find(p => p.value === task.priority);
 
   return (
     <div 
@@ -169,15 +268,104 @@ export const TaskModal = ({ task, onClose }: TaskModalProps) => {
         {/* Header */}
         <div className="flex items-start justify-between p-4 sm:p-6 border-b border-border/30">
           <div className="space-y-2 flex-1 pr-3 sm:pr-4 min-w-0">
-            <h2 className="text-lg sm:text-2xl font-bold tracking-tight line-clamp-2">{task.title}</h2>
+            {/* Inline editable title */}
+            {isEditingTitle ? (
+              <div className="flex items-center gap-2">
+                <input
+                  ref={titleInputRef}
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  onBlur={handleSaveTitle}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSaveTitle(); if (e.key === 'Escape') { setEditTitle(task.title); setIsEditingTitle(false); } }}
+                  className="text-lg sm:text-2xl font-bold tracking-tight bg-transparent border-b-2 border-primary/50 focus:outline-none focus:border-primary w-full py-0.5"
+                  aria-label="Edit task title"
+                  placeholder="Task title"
+                />
+                <button onClick={handleSaveTitle} className="p-1 hover:bg-primary/10 rounded text-primary shrink-0" title="Save title">
+                  <Check className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <h2 
+                className="text-lg sm:text-2xl font-bold tracking-tight line-clamp-2 group cursor-pointer hover:text-primary/80 transition-colors flex items-start gap-2"
+                onClick={() => { setEditTitle(task.title); setIsEditingTitle(true); }}
+              >
+                {task.title}
+                <Pencil className="w-3.5 h-3.5 mt-1.5 opacity-0 group-hover:opacity-50 transition-opacity shrink-0" />
+              </h2>
+            )}
+
+            {/* Interactive status & priority badges */}
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-sm text-muted-foreground">
-              <Badge variant="outline" className="gap-1 sm:gap-1.5 capitalize text-[10px] sm:text-xs">
-                <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${task.status === 'todo' ? 'bg-slate-400' : task.status === 'in_progress' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-                {task.status.replace('_', ' ')}
-              </Badge>
-              <Badge variant={getPriorityVariant(task.priority)} className="capitalize text-[10px] sm:text-xs">
-                {task.priority}
-              </Badge>
+              {/* Status dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => { setShowStatusDropdown(!showStatusDropdown); setShowPriorityDropdown(false); }}
+                  className="flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 rounded-full border border-border/50 hover:border-primary/30 transition-all text-[10px] sm:text-xs bg-card hover:bg-muted/30"
+                >
+                  <div className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${currentStatus?.bg}`} />
+                  <span className="capitalize font-medium">{task.status.replace('_', ' ')}</span>
+                  <ChevronDown className="w-2.5 h-2.5 text-muted-foreground/50" />
+                </button>
+                {showStatusDropdown && (
+                  <div className="absolute left-0 top-full mt-1 z-30 bg-card border border-border/50 rounded-lg shadow-xl p-1 min-w-[150px] status-menu">
+                    {statusOptions.map(s => {
+                      const StatusIcon = s.icon;
+                      return (
+                        <button
+                          key={s.value}
+                          onClick={() => handleStatusChange(s.value)}
+                          className={cn(
+                            "flex items-center gap-2 w-full px-2.5 py-1.5 text-xs rounded-md transition-all",
+                            task.status === s.value 
+                              ? 'bg-primary/10 text-primary font-medium' 
+                              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          )}
+                        >
+                          <StatusIcon className={cn("w-3.5 h-3.5", s.color)} />
+                          {s.label}
+                          {task.status === s.value && <CheckCircle className="w-3 h-3 ml-auto text-primary" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Priority dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => { setShowPriorityDropdown(!showPriorityDropdown); setShowStatusDropdown(false); }}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-0.5 rounded-full border transition-all text-[10px] sm:text-xs capitalize font-medium hover:opacity-80",
+                    currentPriority?.bg
+                  )}
+                >
+                  {task.priority}
+                  <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                </button>
+                {showPriorityDropdown && (
+                  <div className="absolute left-0 top-full mt-1 z-30 bg-card border border-border/50 rounded-lg shadow-xl p-1 min-w-[120px] status-menu">
+                    {priorityOptions.map(p => (
+                      <button
+                        key={p.value}
+                        onClick={() => handlePriorityChange(p.value)}
+                        className={cn(
+                          "flex items-center gap-2 w-full px-2.5 py-1.5 text-xs rounded-md transition-all capitalize",
+                          task.priority === p.value 
+                            ? 'bg-primary/10 text-primary font-medium' 
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        <div className={cn("w-2 h-2 rounded-full", p.value === 'high' ? 'bg-red-500' : p.value === 'medium' ? 'bg-amber-500' : 'bg-blue-500')} />
+                        {p.label}
+                        {task.priority === p.value && <CheckCircle className="w-3 h-3 ml-auto text-primary" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {task.dueDate && (
                 <Badge variant={dueDateStyle.variant || 'outline'} className="gap-1 sm:gap-1.5 text-[10px] sm:text-xs">
                   <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
@@ -197,6 +385,14 @@ export const TaskModal = ({ task, onClose }: TaskModalProps) => {
           </Button>
         </div>
 
+        {/* Close dropdowns when clicking body */}
+        {(showStatusDropdown || showPriorityDropdown) && (
+          <div 
+            className="fixed inset-0 z-20" 
+            onClick={() => { setShowStatusDropdown(false); setShowPriorityDropdown(false); }} 
+          />
+        )}
+
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-8 custom-scrollbar">
           
@@ -207,9 +403,42 @@ export const TaskModal = ({ task, onClose }: TaskModalProps) => {
                 <h3 className="font-semibold mb-1.5 sm:mb-2 flex items-center gap-2 text-xs sm:text-sm">
                   <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" /> Description
                 </h3>
-                <div className="bg-muted/20 p-3 sm:p-4 rounded-lg sm:rounded-xl text-xs sm:text-sm text-foreground/90 leading-relaxed border border-border/30 min-h-[60px] sm:min-h-[100px]">
-                  {task.description || <span className="text-muted-foreground italic">No description provided.</span>}
-                </div>
+                {/* Inline editable description */}
+                {isEditingDescription ? (
+                  <div className="relative">
+                    <textarea
+                      ref={descInputRef}
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      onBlur={handleSaveDescription}
+                      onKeyDown={(e) => { if (e.key === 'Escape') { setEditDescription(task.description || ''); setIsEditingDescription(false); } }}
+                      className="w-full bg-muted/20 p-3 sm:p-4 rounded-lg sm:rounded-xl text-xs sm:text-sm text-foreground/90 leading-relaxed border-2 border-primary/30 min-h-[100px] sm:min-h-[120px] focus:outline-none focus:border-primary/50 resize-none"
+                      placeholder="Add a description..."
+                    />
+                    <div className="flex justify-end gap-1.5 mt-1.5">
+                      <button 
+                        onClick={() => { setEditDescription(task.description || ''); setIsEditingDescription(false); }}
+                        className="text-[10px] sm:text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={handleSaveDescription}
+                        className="text-[10px] sm:text-xs text-primary font-medium hover:bg-primary/10 px-2 py-1 rounded transition-all flex items-center gap-1"
+                      >
+                        <Check className="w-3 h-3" /> Save
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    className="bg-muted/20 p-3 sm:p-4 rounded-lg sm:rounded-xl text-xs sm:text-sm text-foreground/90 leading-relaxed border border-border/30 min-h-[60px] sm:min-h-[100px] cursor-pointer hover:border-primary/20 transition-all group relative"
+                    onClick={() => { setEditDescription(task.description || ''); setIsEditingDescription(true); }}
+                  >
+                    {task.description || <span className="text-muted-foreground italic">Click to add a description...</span>}
+                    <Pencil className="w-3 h-3 absolute top-3 right-3 opacity-0 group-hover:opacity-40 text-muted-foreground transition-opacity" />
+                  </div>
+                )}
               </div>
             </div>
             
@@ -311,6 +540,7 @@ export const TaskModal = ({ task, onClose }: TaskModalProps) => {
                     <button
                       onClick={() => deleteSubtaskMutation.mutate(subtask.id)}
                       className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-1"
+                      title="Delete subtask"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -333,6 +563,59 @@ export const TaskModal = ({ task, onClose }: TaskModalProps) => {
                 {addSubtaskMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
               </Button>
             </form>
+          </div>
+
+          {/* Activity Log Section */}
+          <div className="space-y-3 sm:space-y-4 pt-3 sm:pt-4 border-t border-border/30">
+            <button
+              onClick={() => setShowActivityLog(!showActivityLog)}
+              className="font-semibold flex items-center gap-2 text-xs sm:text-sm w-full hover:text-primary/80 transition-colors"
+            >
+              <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" /> 
+              Activity Log ({activityLog.length})
+              <ChevronDown className={cn("w-3.5 h-3.5 text-muted-foreground/50 ml-auto transition-transform", showActivityLog && "rotate-180")} />
+            </button>
+
+            {showActivityLog && (
+              <div className="space-y-2 animate-fade-in">
+                {activityLog.length === 0 ? (
+                  <div className="text-center py-3 sm:py-4 border-2 border-dashed border-border/30 rounded-lg sm:rounded-xl">
+                    <Activity className="w-6 h-6 text-muted-foreground/20 mx-auto mb-1" />
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">No activity recorded.</p>
+                  </div>
+                ) : (
+                  <div className="relative space-y-0">
+                    {/* Timeline line */}
+                    <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border/40" />
+                    {activityLog.slice().reverse().slice(0, 10).map((entry, idx) => (
+                      <div key={idx} className="flex items-start gap-3 py-2 relative animate-fade-in-up" style={{ animationDelay: `${idx * 30}ms` }}>
+                        <div className={cn(
+                          "w-[18px] h-[18px] rounded-full flex items-center justify-center shrink-0 z-10 ring-3 ring-card",
+                          entry.action === 'created' ? 'bg-emerald-500' : 'bg-blue-500'
+                        )}>
+                          {entry.action === 'created' ? (
+                            <Plus className="w-2.5 h-2.5 text-white" />
+                          ) : (
+                            <Pencil className="w-2.5 h-2.5 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] sm:text-xs text-foreground/80 leading-relaxed">
+                            <span className="font-medium capitalize">{entry.action}</span>
+                            {entry.details && <span className="text-muted-foreground"> — {entry.details}</span>}
+                          </p>
+                          {entry.timestamp && (
+                            <p className="text-[9px] sm:text-[10px] text-muted-foreground/60 mt-0.5 font-medium">
+                              {(() => { try { return format(new Date(entry.timestamp), 'MMM d, h:mm a'); } catch { return ''; } })()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Comments Section */}
