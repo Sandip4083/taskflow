@@ -9,6 +9,8 @@ export interface IUser extends Document {
   role: 'admin' | 'member';
   avatar?: string;
   refreshToken?: string;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -22,6 +24,8 @@ const userSchema = new Schema<IUser>(
     role: { type: String, enum: ['admin', 'member'], default: 'member' },
     avatar: { type: String, default: '' },
     refreshToken: { type: String },
+    resetPasswordToken: { type: String },
+    resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );
@@ -43,6 +47,8 @@ userSchema.set('toJSON', {
     delete (ret as any)._id;
     delete (ret as any).password;
     delete (ret as any).refreshToken;
+    delete (ret as any).resetPasswordToken;
+    delete (ret as any).resetPasswordExpires;
     delete (ret as any).__v;
     return ret;
   },

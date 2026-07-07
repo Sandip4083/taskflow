@@ -13,6 +13,9 @@ export const getOverview = asyncHandler(async (req: AuthRequest, res: Response) 
   });
   const projectIds = projects.map((p) => p._id);
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
   // Aggregate task stats
   const [stats] = await Task.aggregate([
     { $match: { project: { $in: projectIds } } },
@@ -27,7 +30,7 @@ export const getOverview = asyncHandler(async (req: AuthRequest, res: Response) 
         overdue: {
           $sum: {
             $cond: [
-              { $and: [{ $ne: ['$status', 'done'] }, { $lt: ['$dueDate', new Date()] }, { $ne: ['$dueDate', null] }] },
+              { $and: [{ $ne: ['$status', 'done'] }, { $lt: ['$dueDate', todayStart] }, { $ne: ['$dueDate', null] }] },
               1,
               0,
             ],

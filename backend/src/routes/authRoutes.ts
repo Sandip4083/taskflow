@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { register, login, refreshAccessToken, logout, getMe } from '../controllers/authController.js';
+import { register, login, refreshAccessToken, logout, getMe, forgotPassword, resetPassword } from '../controllers/authController.js';
 import { validate } from '../middleware/validate.js';
 import { auth } from '../middleware/auth.js';
 
@@ -30,5 +30,19 @@ router.post(
 router.post('/refresh', refreshAccessToken);
 router.post('/logout', auth, logout);
 router.get('/me', auth, getMe);
+
+router.post(
+  '/forgot-password',
+  [body('email').isEmail().withMessage('Valid email is required')],
+  validate,
+  forgotPassword
+);
+
+router.post(
+  '/reset-password/:token',
+  [body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')],
+  validate,
+  resetPassword
+);
 
 export default router;

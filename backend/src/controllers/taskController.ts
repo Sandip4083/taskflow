@@ -76,14 +76,18 @@ export const updateTask = asyncHandler(async (req: AuthRequest, res: Response) =
   if (!task) throw new ApiError(404, 'Task not found');
 
   // Accept both frontend snake_case and backend camelCase
-  const { title, description, status, priority, assignee_id, due_date } = req.body;
+  const { title, description, status, priority, assignee_id, due_date, dueDate } = req.body;
   const changes: string[] = [];
 
   if (title !== undefined && title !== task.title) { changes.push(`title → "${title}"`); task.title = title; }
   if (description !== undefined) { task.description = description; }
   if (status !== undefined && status !== task.status) { changes.push(`status → ${status}`); task.status = status; }
   if (priority !== undefined && priority !== task.priority) { changes.push(`priority → ${priority}`); task.priority = priority; }
-  if (due_date !== undefined) { task.dueDate = due_date; }
+  
+  const targetDueDate = due_date !== undefined ? due_date : dueDate;
+  if (targetDueDate !== undefined) { 
+    task.dueDate = targetDueDate || undefined; 
+  }
 
   if (assignee_id !== undefined && assignee_id !== task.assignee?.toString()) {
     changes.push('assignee changed');

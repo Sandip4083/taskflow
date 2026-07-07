@@ -497,7 +497,7 @@ export const TaskModal = ({ task, projectId, onClose }: TaskModalProps) => {
                     "h-full rounded-full transition-all duration-700 ease-out",
                     subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-primary'
                   )}
-                  style={{ width: `${subtaskProgress}%` }}
+                  {...{ style: { width: `${subtaskProgress}%` } }}
                 />
               </div>
             )}
@@ -588,9 +588,9 @@ export const TaskModal = ({ task, projectId, onClose }: TaskModalProps) => {
                     {/* Timeline line */}
                     <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border/40" />
                     {activityLog.slice().reverse().slice(0, 10).map((entry, idx) => (
-                      <div key={idx} className="flex items-start gap-3 py-2 relative animate-fade-in-up" style={{ animationDelay: `${idx * 30}ms` }}>
+                      <div key={idx} className="flex items-start gap-3 py-2 relative animate-fade-in-up" {...{ style: { animationDelay: `${idx * 30}ms` } }}>
                         <div className={cn(
-                          "w-[18px] h-[18px] rounded-full flex items-center justify-center shrink-0 z-10 ring-3 ring-card",
+                          "w-[20px] h-[20px] rounded-full flex items-center justify-center shrink-0 z-10 ring-2 ring-card",
                           entry.action === 'created' ? 'bg-emerald-500' : 'bg-blue-500'
                         )}>
                           {entry.action === 'created' ? (

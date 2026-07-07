@@ -284,7 +284,7 @@ export const ProjectDetail = () => {
         </div>
         <div className="grid grid-cols-3 gap-3 sm:gap-6 flex-1">
           {[1,2,3].map(i => (
-            <div key={i} className="rounded-xl sm:rounded-2xl border border-border/30 p-3 sm:p-4 animate-pulse" style={{ animationDelay: `${i * 100}ms` }}>
+            <div key={i} className="rounded-xl sm:rounded-2xl border border-border/30 p-3 sm:p-4 animate-pulse" {...{ style: { animationDelay: `${i * 100}ms` } }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
                   <div className="w-2.5 h-2.5 skeleton rounded-full" />
@@ -395,7 +395,7 @@ export const ProjectDetail = () => {
             <p className="text-muted-foreground mt-1 sm:mt-2 text-xs sm:text-base line-clamp-2">{project.description || 'No description'}</p>
             <div className="mt-3 sm:mt-4 flex items-center gap-2 sm:gap-3">
               <div className="flex-1 max-w-[200px] sm:max-w-xs h-1.5 sm:h-2 bg-muted rounded-full overflow-hidden">
-                <div className={`h-full rounded-full transition-all duration-700 ease-out ${progress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-primary to-emerald-500'}`} style={{ width: `${progress}%` }} />
+                <div className={`h-full rounded-full transition-all duration-700 ease-out ${progress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-primary to-emerald-500'}`} {...{ style: { width: `${progress}%` } }} />
               </div>
               <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground whitespace-nowrap">{progress}%</span>
               <Badge variant="outline" className="text-[10px] sm:text-xs hidden sm:flex">{totalTasks} tasks</Badge>
@@ -616,7 +616,7 @@ export const ProjectDetail = () => {
 
       <DragDropContext onDragEnd={onDragEnd}>
         {/* Horizontal scroll on mobile for the kanban columns */}
-        <div className="flex-1 min-h-[400px] sm:min-h-[500px] pb-4" style={{ overflowX: 'auto' }}>
+        <div className="flex-1 min-h-[400px] sm:min-h-[500px] pb-4 overflow-x-auto">
           <div className="grid grid-cols-3 gap-3 sm:gap-6 min-w-[720px] md:min-w-0 h-full">
             {STATUSES.map(status => {
               const config = statusConfig[status];
@@ -625,7 +625,7 @@ export const ProjectDetail = () => {
               const columnPercentage = totalTasks > 0 ? Math.round((columnTasks.length / totalTasks) * 100) : 0;
 
               return (
-                <div key={status} className={`bg-gradient-to-b ${config.headerBg} rounded-xl sm:rounded-2xl flex flex-col border ${config.borderColor} h-full overflow-hidden animate-fade-in-up`}>
+                <div key={status} className={`bg-gradient-to-b ${config.headerBg} rounded-xl sm:rounded-2xl flex flex-col border ${config.borderColor} h-full overflow-hidden`}>
                   {/* Column header */}
                   <div className="font-semibold p-3 sm:p-4 capitalize flex justify-between items-center text-foreground shrink-0 border-b border-border/30 text-xs sm:text-base">
                     <div className="flex items-center gap-1.5 sm:gap-2.5">
@@ -668,19 +668,20 @@ export const ProjectDetail = () => {
                           <div className="space-y-2 sm:space-y-3 min-h-[80px] sm:min-h-[100px]">
                             {columnTasks.map((task, index) => (
                               <Draggable key={task.id} draggableId={task.id} index={index}>
-                                {(provided, snapshot) => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    style={{ ...provided.draggableProps.style }}
-                                  >
+                                {(provided, snapshot) => {
+                                  const cardElement = (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      {...{ style: provided.draggableProps.style }}
+                                    >
                                     <Card 
                                       onClick={() => !bulkMode ? setSelectedTask(task) : toggleTaskSelection(task.id, { stopPropagation: () => {} } as React.MouseEvent)}
-                                      className={`cursor-pointer transition-all duration-200 bg-card group ${
+                                      className={`cursor-grab active:cursor-grabbing bg-card group ${
                                         snapshot.isDragging 
-                                          ? 'shadow-2xl ring-2 ring-primary/40 scale-[1.03] rotate-[1deg]' 
-                                          : 'shadow-sm hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5'
+                                          ? 'shadow-2xl ring-2 ring-primary/40 scale-[1.02] rotate-[0.5deg] cursor-grabbing transition-none' 
+                                          : 'transition-all duration-200 shadow-sm hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5'
                                       } ${selectedTasks.has(task.id) ? 'ring-2 ring-primary/50 bg-primary/[0.03]' : ''}`}
                                     >
                                       <CardContent className="p-2.5 sm:p-4">
@@ -784,8 +785,11 @@ export const ProjectDetail = () => {
                                         </div>
                                       </CardContent>
                                     </Card>
-                                  </div>
-                                )}
+                                    </div>
+                                  );
+
+                                  return cardElement;
+                                }}
                               </Draggable>
                             ))}
                             {provided.placeholder}
