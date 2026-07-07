@@ -6,6 +6,10 @@ let isConnected = false;
 export const connectDB = async () => {
   if (isConnected) return;
 
+  if (!env.MONGODB_URI) {
+    throw new Error('MONGODB_URI environment variable is missing. Please configure it in Vercel/Environment Settings.');
+  }
+
   try {
     const conn = await mongoose.connect(env.MONGODB_URI, {
       serverSelectionTimeoutMS: 10000,

@@ -43,26 +43,7 @@ app.use(cors({
 app.use(express.json({ limit: '4mb' }));
 app.use(express.urlencoded({ extended: true, limit: '4mb' }));
 
-// Connect DB for serverless environments — lazy connection with caching
-let dbConnectionPromise: Promise<void> | null = null;
-
-app.use(async (_req, res, next) => {
-  if (!dbConnectionPromise) {
-    dbConnectionPromise = connectDB().catch((err) => {
-      dbConnectionPromise = null; // Reset so next request retries
-      throw err;
-    });
-  }
-  try {
-    await dbConnectionPromise;
-    next();
-  } catch (err) {
-    console.error('Failed to connect to DB in serverless function', err);
-    res.status(503).json({ error: 'Database connection failed. Please try again.' });
-  }
-});
-
-// Health check (no auth required)
+// Health check (no auth or DB connection required)
 app.get('/api/health', (_req, res) => {
   res.json({ 
     status: 'ok', 
@@ -75,6 +56,17 @@ app.get('/api/health', (_req, res) => {
       is_vercel: !!process.env.VERCEL
     }
   });
+});
+
+// Connect DB for serverless environments — lazy connection with caching
+app.use(async (_req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('Failed to connect to DB in serverless function', err);
+    res.status(503).json({ error: 'Database connection failed. Please try again.' });
+  }
 });
 
 // API Routes
